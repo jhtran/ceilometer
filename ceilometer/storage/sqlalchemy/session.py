@@ -37,9 +37,6 @@ _MAKER = None
 _ENGINE = None
 
 sql_opts = [
-    cfg.StrOpt('state_path',
-               default='$pybasedir',
-               help="Top-level directory for maintaining ceilometer's state"),
     cfg.IntOpt('sql_connection_debug',
                default=0,
                help='Verbosity of SQL debugging information. 0=None, '
