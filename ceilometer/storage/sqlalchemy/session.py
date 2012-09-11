@@ -18,6 +18,7 @@
 
 """Session Handling for SQLAlchemy backend."""
 
+import os
 import re
 import time
 
@@ -27,7 +28,6 @@ import sqlalchemy.interfaces
 import sqlalchemy.orm
 from sqlalchemy.pool import NullPool, StaticPool
 
-import ceilometer.default_cfg
 import ceilometer.openstack.common.cfg as cfg
 import ceilometer.openstack.common.log as logging
 
@@ -37,10 +37,6 @@ _MAKER = None
 _ENGINE = None
 
 sql_opts = [
-    cfg.StrOpt('pybasedir',
-               default=os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                    '../')),
-               help='Directory where the nova python module is installed'),
     cfg.StrOpt('state_path',
                default='$pybasedir',
                help="Top-level directory for maintaining ceilometer's state"),
