@@ -21,17 +21,35 @@
 SQLAlchemy models for nova data.
 """
 
+import json
 from sqlalchemy import Column, Integer, BigInteger, String, schema
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean, Text, Float
 from sqlalchemy.orm import relationship, backref, object_mapper
+from sqlalchemy.types import TypeDecorator, VARCHAR
 
 from ceilometer.storage.sqlalchemy.session import get_session
 from ceilometer.openstack.common import timeutils
 
 
 BASE = declarative_base()
+
+
+class JSONEncodedDict(TypeDecorator):
+    "Represents an immutable structure as a json-encoded string."
+
+    impl = VARCHAR
+
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            value = json.dumps(value)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            value = json.loads(value)
+        return value
 
 
 class CeilometerBase(object):
@@ -98,17 +116,17 @@ class Meter(BASE, CeilometerBase):
     __tablename__ = 'meter'
     id = Column(Integer, primary_key=True)
     counter_name = Column(String(255))
-    source = Column(String(255))
+    sources = relationship("MeterSource")
     user_id = Column(Integer, ForeignKey('user.id'))
     project_id = Column(Integer, ForeignKey('project.id'))
     resource_id = Column(Integer, ForeignKey('resource.id'))
-    resource_metadata = Column(String(1000))
+    resource_metadata = Column(JSONEncodedDict)
     counter_type = Column(String(255))
     counter_volume = Column(Integer)
     counter_duration = Column(Integer)
-    timestamp = Column(DateTime, default=timeutils.utcnow())
-    message_signature = Column(String(255))
-    message_id = Column(String(255))
+    timestamp = Column(DateTime, default=timeutils.utcnow)
+    message_signature = Column(String)
+    message_id = Column(String)
 
 
 class User(BASE, CeilometerBase):
@@ -125,8 +143,16 @@ class Source(BASE, CeilometerBase):
     name = Column(String(255))
 
 
+class MeterSource(Source):
+    meter_id = Column(Integer, ForeignKey('meter.id'))
+
+
 class UserSource(Source):
     user_id = Column(Integer, ForeignKey('user.id'))
+
+
+class ResourceSource(Source):
+    resource_id = Column(Integer, ForeignKey('resource.id'))
 
 
 class ProjectSource(Source):
@@ -144,11 +170,10 @@ class Project(BASE, CeilometerBase):
 class Resource(BASE, CeilometerBase):
     __tablename__ = 'resource'
     id = Column(Integer, primary_key=True)
-    source = Column(String(255))
-    meter = Column(String(1000))
+    sources = relationship("ResourceSource")
     timestamp = Column(DateTime)
-    resource_metadata = Column(String(1000))
-    received_timestamp = Column(DateTime, default=timeutils.utcnow())
+    resource_metadata = Column(JSONEncodedDict)
+    received_timestamp = Column(DateTime, default=timeutils.utcnow)
     user_id = Column(Integer, ForeignKey('user.id'))
     project_id = Column(Integer, ForeignKey('project.id'))
     meters = relationship("Meter", backref='resource')

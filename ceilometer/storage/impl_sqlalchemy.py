@@ -23,8 +23,10 @@ import json
 from ceilometer.openstack.common import log
 from ceilometer.openstack.common import cfg
 from ceilometer.storage import base
-from ceilometer.storage.sqlalchemy.models import User, UserSource, Resource
-from ceilometer.storage.sqlalchemy.models import Project, ProjectSource, Meter
+from ceilometer.storage.sqlalchemy.models import User, UserSource
+from ceilometer.storage.sqlalchemy.models import Resource, ResourceSource
+from ceilometer.storage.sqlalchemy.models import Project, ProjectSource
+from ceilometer.storage.sqlalchemy.models import Meter, MeterSource
 from ceilometer.storage.sqlalchemy.session import get_session
 import ceilometer.storage.sqlalchemy.session as session
 
@@ -119,25 +121,26 @@ class Connection(base.Connection):
                      ceilometer.meter.meter_message_from_counter
         """
         # create/update user && project, add/update their sources list
-        #user = user_get(data['user_id'], session=self.session)
+        source = data['source']
         user = self.session.merge(User(id=data['user_id']))
-        if not filter(lambda x: x.name == data['source'], user.sources):
-            user.sources.append(UserSource(name=data['source']))
+        if not filter(lambda x: x.name == source, user.sources):
+            user.sources.append(UserSource(name=source))
 
         self.session.flush()
 
         project = self.session.merge(Project(id=data['project_id']))
-        if not filter(lambda x: x.name == data['project_id'], project.sources):
-            project.sources.append(ProjectSource(name=data['source']))
+        if not filter(lambda x: x.name == source, project.sources):
+            project.sources.append(ProjectSource(name=source))
 
         self.session.flush()
 
         # Record the updated resource metadata
         rtimestamp = datetime.datetime.utcnow()
-        rmetadata = json.dumps(data['resource_metadata'])
+        rmetadata = data['resource_metadata']
 
         resource = self.session.merge(Resource(id=data['resource_id']))
-        resource.source = data['source']
+        if not filter(lambda x: x.name == source, resource.sources):
+            resource.sources.append(ResourceSource(name=source))
         resource.project = project
         resource.user = user
         resource.timestamp = data['timestamp']
@@ -151,10 +154,10 @@ class Connection(base.Connection):
         meter = self.session.merge(Meter(counter_type=data['counter_type'],
                                          counter_name=data['counter_name'],
                                          resource=resource))
-
-        meter.source = data['source']
         meter.project = project
         meter.user = user
+        if not filter(lambda x: x.name == source, meter.sources):
+            meter.sources.append(MeterSource(name=source))
         meter.timestamp = data['timestamp']
         meter.resource_metadata = rmetadata
         meter.counter_duration = data['counter_duration']
@@ -213,8 +216,8 @@ class Connection(base.Connection):
         query = query.join(Meter)
         if user is not None:
             query = query.filter(Meter.user_id == user)
-        if source is not None:
-            query = query.filter(Meter.source == source)
+        #if source is not None:
+        #    query = query.filter(Meter.source == source)
         if start_timestamp is not None:
             query = query.filter(Meter.timestamp >= start_timestamp)
         if end_timestamp:

@@ -15,7 +15,6 @@
 """
 
 import datetime
-import json
 import logging
 import os
 import re
@@ -124,9 +123,9 @@ class SQLAlchemyEngineTestBase(unittest.TestCase):
                 '%s' % i,
                 timestamp=datetime.datetime(2012, 7, 2, 10, 40 + i),
                 duration=0,
-                resource_metadata=json.dumps({'display_name': 'test-server',
+                resource_metadata={'display_name': 'test-server',
                                    'tag': 'counter-%s' % i,
-                                   })
+                                  }
                 )
             msg = meter.meter_message_from_counter(c)
             self.conn.record_metering_data(msg)
@@ -200,7 +199,7 @@ class ResourceTest(SQLAlchemyEngineTestBase):
     def test_new_resource_metadata(self):
         resource = self.session.query(Resource).get(111)
         assert hasattr(resource, 'metadata')
-        metadata = json.loads(resource.resource_metadata)
+        metadata = resource.resource_metadata
         assert metadata['display_name'] == 'test-server'
 
     def test_get_resources(self):
