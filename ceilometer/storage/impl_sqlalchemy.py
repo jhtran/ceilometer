@@ -18,7 +18,6 @@
 
 import copy
 import datetime
-import json
 
 from ceilometer.openstack.common import log
 from ceilometer.openstack.common import cfg
@@ -309,8 +308,5 @@ def model_query(*args, **kwargs):
 def row2dict(row):
     d = {}
     for column in row.__table__.columns:
-        if column.name == 'resource_metadata':
-            d[column.name] = json.loads(getattr(row, column.name))
-        else:
-            d[column.name] = getattr(row, column.name)
+        d[column.name] = getattr(row, column.name)
     return d
