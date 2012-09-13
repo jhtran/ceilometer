@@ -170,7 +170,6 @@ class ProjectTest(SQLAlchemyEngineTestBase):
 
     def test_get_projects_by_source(self):
         projects = self.conn.get_projects(source='test-1')
-        print projects
         assert len(projects) == 1
         assert projects == [1]
 
@@ -259,7 +258,7 @@ class MeterTest(SQLAlchemyEngineTestBase):
 
     def _compare_raw(self, msg_dict, result_dict):
         for k, v in msg_dict.items():
-            if k == 'timestamp':
+            if k in ['timestamp', 'source']:
                 continue
             if k == 'resource_metadata':
                key = result_dict[k]
@@ -271,7 +270,10 @@ class MeterTest(SQLAlchemyEngineTestBase):
 
     def _iterate_msgs(self, results):
         for meter in results:
-            count = re.match('test-(\d+)', meter['source']).group(1)
+            labels = map(lambda x: x['name'], meter['sources'])
+            # should only have one source
+            assert len(labels) == 1
+            count = re.match('test-(\d+)', labels[0]).group(1)
             self._compare_raw(getattr(self, 'msg'+count), meter)
 
     def test_new_meter(self):

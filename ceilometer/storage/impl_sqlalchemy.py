@@ -215,14 +215,16 @@ class Connection(base.Connection):
         query = query.join(Meter)
         if user is not None:
             query = query.filter(Meter.user_id == user)
-        #if source is not None:
-        #    query = query.filter(Meter.source == source)
         if start_timestamp is not None:
             query = query.filter(Meter.timestamp >= start_timestamp)
         if end_timestamp:
             query = query.filter(Meter.timestamp <= end_timestamp)
         if project is not None:
             query = query.filter(Meter.project_id == project)
+        if source is not None:
+            query = query.join(ResourceSource)
+            query = query.filter(ResourceSource.name == source)
+
         for resource in query.all():
             r = row2dict(resource)
             # Replace the '_id' key with 'resource_id' to meet the
@@ -305,8 +307,11 @@ def model_query(*args, **kwargs):
     return query
 
 
-def row2dict(row):
-    d = {}
-    for column in row.__table__.columns:
-        d[column.name] = getattr(row, column.name)
+def row2dict(row, srcflag=None):
+    d = copy.copy(row.__dict__)
+    for col in ['_sa_instance_state', 'sources']:
+        if col in d:
+            del d[col]
+    if srcflag is None:
+        d['sources'] = map(lambda x: row2dict(x, True), row.sources)
     return d

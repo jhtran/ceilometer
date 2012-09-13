@@ -116,7 +116,7 @@ class Meter(BASE, CeilometerBase):
     __tablename__ = 'meter'
     id = Column(Integer, primary_key=True)
     counter_name = Column(String(255))
-    sources = relationship("MeterSource")
+    sources = relationship("MeterSource", lazy='joined')
     user_id = Column(Integer, ForeignKey('user.id'))
     project_id = Column(Integer, ForeignKey('project.id'))
     resource_id = Column(Integer, ForeignKey('resource.id'))
