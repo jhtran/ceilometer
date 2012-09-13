@@ -107,6 +107,7 @@ class Connection(base.Connection):
     def __init__(self, conf):
         LOG.info('connecting to %s', conf.database_connection)
         self.session = self._get_connection(conf)
+        self.scoped_session = session.get_session(scoped=True)
         self.source_model = self._unique_construct(Source)
         return
 
@@ -115,11 +116,12 @@ class Connection(base.Connection):
         """
         return session.get_session()
 
-    def _unique_construct(self, model_class):
+    def _unique_construct(self, model_class, scoped=None):
         """Return session specific unique constructed model class - see
            http://www.sqlalchemy.org/trac/wiki/UsageRecipes/UniqueObject
         """
-        newclass = unique_constructor(self.session,
+        scoped = scoped and scoped or self.scoped_session
+        newclass = unique_constructor(scoped,
                 lambda name:name,
                 lambda query, name:query.filter(model_class.name==name)
         )(model_class)
