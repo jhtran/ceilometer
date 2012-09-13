@@ -22,10 +22,11 @@ import datetime
 from ceilometer.openstack.common import log
 from ceilometer.openstack.common import cfg
 from ceilometer.storage import base
-from ceilometer.storage.sqlalchemy.models import User, UserSource
+from ceilometer.storage.sqlalchemy.models import User, UserSource, Source
 from ceilometer.storage.sqlalchemy.models import Resource, ResourceSource
 from ceilometer.storage.sqlalchemy.models import Project, ProjectSource
 from ceilometer.storage.sqlalchemy.models import Meter, MeterSource
+from ceilometer.storage.sqlalchemy.recipes import unique_constructor
 from ceilometer.storage.sqlalchemy.session import get_session
 import ceilometer.storage.sqlalchemy.session as session
 
@@ -106,12 +107,23 @@ class Connection(base.Connection):
     def __init__(self, conf):
         LOG.info('connecting to %s', conf.database_connection)
         self.session = self._get_connection(conf)
+        self.source_model = self._unique_construct(Source)
         return
 
     def _get_connection(self, conf):
         """Return a connection to the database.
         """
         return session.get_session()
+
+    def _unique_construct(self, model_class):
+        """Return session specific unique constructed model class - see
+           http://www.sqlalchemy.org/trac/wiki/UsageRecipes/UniqueObject
+        """
+        newclass = unique_constructor(self.session,
+                lambda name:name,
+                lambda query, name:query.filter(model_class.name==name)
+        )(model_class)
+        return newclass
 
     def record_metering_data(self, data):
         """Write the data to the backend storage system.
@@ -122,14 +134,14 @@ class Connection(base.Connection):
         # create/update user && project, add/update their sources list
         source = data['source']
         user = self.session.merge(User(id=data['user_id']))
-        if not filter(lambda x: x.name == source, user.sources):
-            user.sources.append(UserSource(name=source))
+        if source not in user.sources:
+            user.sources.append(source)
 
         self.session.flush()
 
         project = self.session.merge(Project(id=data['project_id']))
-        if not filter(lambda x: x.name == source, project.sources):
-            project.sources.append(ProjectSource(name=source))
+        #if not filter(lambda x: x.name == source, project.sources):
+        #    project.sources.append(ProjectSource(name=source))
 
         self.session.flush()
 
@@ -138,8 +150,8 @@ class Connection(base.Connection):
         rmetadata = data['resource_metadata']
 
         resource = self.session.merge(Resource(id=data['resource_id']))
-        if not filter(lambda x: x.name == source, resource.sources):
-            resource.sources.append(ResourceSource(name=source))
+        #if not filter(lambda x: x.name == source, resource.sources):
+        #    resource.sources.append(ResourceSource(name=source))
         resource.project = project
         resource.user = user
         resource.timestamp = data['timestamp']
@@ -155,8 +167,8 @@ class Connection(base.Connection):
                                          resource=resource))
         meter.project = project
         meter.user = user
-        if not filter(lambda x: x.name == source, meter.sources):
-            meter.sources.append(MeterSource(name=source))
+        #if not filter(lambda x: x.name == source, meter.sources):
+        #    meter.sources.append(MeterSource(name=source))
         meter.timestamp = data['timestamp']
         meter.resource_metadata = rmetadata
         meter.counter_duration = data['counter_duration']
@@ -173,10 +185,10 @@ class Connection(base.Connection):
 
         :param source: Optional source filter.
         """
-        query = model_query(User, session=self.session)
+        query = model_query(User.id, session=self.session)
         if source is not None:
-            query = query.join(UserSource).filter(UserSource.name == source)
-        return [x.id for x in query.all()]
+            query = query.filter(User.sources.contains(source))
+        return (x[0] for x in query.all())
 
     def get_projects(self, source=None):
         """Return an iterable of project id strings.
