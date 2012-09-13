@@ -26,7 +26,6 @@ from ceilometer.storage.sqlalchemy.models import User, UserSource, Source
 from ceilometer.storage.sqlalchemy.models import Resource, ResourceSource
 from ceilometer.storage.sqlalchemy.models import Project, ProjectSource
 from ceilometer.storage.sqlalchemy.models import Meter, MeterSource
-from ceilometer.storage.sqlalchemy.recipes import unique_constructor
 from ceilometer.storage.sqlalchemy.session import get_session
 import ceilometer.storage.sqlalchemy.session as session
 
@@ -107,23 +106,12 @@ class Connection(base.Connection):
     def __init__(self, conf):
         LOG.info('connecting to %s', conf.database_connection)
         self.session = self._get_connection(conf)
-        self.source_model = self._unique_construct(Source)
         return
 
     def _get_connection(self, conf):
         """Return a connection to the database.
         """
         return session.get_session()
-
-    def _unique_construct(self, model_class):
-        """Return session specific unique constructed model class - see
-           http://www.sqlalchemy.org/trac/wiki/UsageRecipes/UniqueObject
-        """
-        newclass = unique_constructor(self.session,
-                lambda name:name,
-                lambda query, name:query.filter(model_class.name==name)
-        )(model_class)
-        return newclass
 
     def record_metering_data(self, data):
         """Write the data to the backend storage system.
