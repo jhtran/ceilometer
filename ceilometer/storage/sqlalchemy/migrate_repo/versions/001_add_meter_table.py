@@ -39,18 +39,24 @@ project = Table(
     Column('id', Integer, primary_key=True),
 )
 
+sourceassoc = Table(
+    'sourceassoc', meta,
+    Column('source_id', Integer),
+    Column('user_id', Integer),
+    Column('project_id', Integer),
+    Column('resource_id', Integer),
+    Column('meter_id', Integer)
+)
+
 source = Table(
     'source', meta,
     Column('id', Integer, primary_key=True),
-    Column('meter_id', Integer),
-    Column('project_id', Integer),
-    Column('resource_id', Integer),
-    Column('user_id', Integer),
-    Column('name', String(255))
+    Column('name', String(255)),
+    UniqueConstraint('name')
 )
 
 
-tables = [meter, project, resource, user, source ]
+tables = [meter, project, resource, user, source, sourceassoc ]
 
 
 def upgrade(migrate_engine):

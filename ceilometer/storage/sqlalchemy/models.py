@@ -22,8 +22,9 @@ SQLAlchemy models for nova data.
 """
 
 import json
-from sqlalchemy import Column, Integer, BigInteger, String, schema
+from sqlalchemy import Column, Integer, BigInteger, String, schema, Table
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime, Boolean, Text, Float
 from sqlalchemy.orm import relationship, backref, object_mapper
@@ -110,13 +111,20 @@ class CeilometerBase(object):
         return local.iteritems()
 
 
+sourceassoc = Table('sourceassoc', BASE.metadata,
+    Column('user_id', Integer, ForeignKey("user.id")),
+    Column('source_id', Integer, ForeignKey("source.id"))
+)
+
+
 class Meter(BASE, CeilometerBase):
     """Metering data"""
 
     __tablename__ = 'meter'
     id = Column(Integer, primary_key=True)
     counter_name = Column(String(255))
-    sources = relationship("MeterSource", lazy='joined')
+    srcs = relationship("Source", lazy='joined')
+    sources = association_proxy('srcs', 'name')
     user_id = Column(Integer, ForeignKey('user.id'))
     project_id = Column(Integer, ForeignKey('project.id'))
     resource_id = Column(Integer, ForeignKey('resource.id'))
@@ -132,7 +140,8 @@ class Meter(BASE, CeilometerBase):
 class User(BASE, CeilometerBase):
     __tablename__ = 'user'
     id = Column(Integer, primary_key=True)
-    sources = relationship("UserSource")
+    src = relationship("Source", secondary=lambda: sourceassoc)
+    sources = association_proxy('src', 'name')
     resources = relationship("Resource", backref='user')
     meters = relationship("Meter", backref='user')
 
@@ -141,6 +150,9 @@ class Source(BASE, CeilometerBase):
     __tablename__ = 'source'
     id = Column(Integer, primary_key=True)
     name = Column(String(255))
+
+    def __init__(self, name):
+        self.name = name
 
 
 class MeterSource(Source):
@@ -162,7 +174,7 @@ class ProjectSource(Source):
 class Project(BASE, CeilometerBase):
     __tablename__ = 'project'
     id = Column(Integer, primary_key=True)
-    sources = relationship("ProjectSource")
+    sources = relationship("Source")
     resources = relationship("Resource", backref='project')
     meters = relationship("Meter", backref='project')
 
@@ -170,7 +182,7 @@ class Project(BASE, CeilometerBase):
 class Resource(BASE, CeilometerBase):
     __tablename__ = 'resource'
     id = Column(Integer, primary_key=True)
-    sources = relationship("ResourceSource")
+    sources = relationship("Source")
     timestamp = Column(DateTime)
     resource_metadata = Column(JSONEncodedDict)
     received_timestamp = Column(DateTime, default=timeutils.utcnow)
