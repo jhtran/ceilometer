@@ -61,16 +61,15 @@ sql_opts = [
 cfg.CONF.register_opts(sql_opts)
 
 
-def get_session(autocommit=True, expire_on_commit=False):
+def get_session(autocommit=True, expire_on_commit=False, scoped=False):
     """Return a SQLAlchemy session."""
     global _MAKER
 
     if _MAKER is None:
         engine = get_engine()
-        _MAKER = get_maker(engine, autocommit, expire_on_commit)
+        _MAKER = get_maker(engine, autocommit, expire_on_commit, scoped)
 
-    session = _MAKER()
-    return session
+    return scoped and _MAKER or _MAKER()
 
 
 def synchronous_switch_listener(dbapi_conn, connection_rec):
@@ -184,11 +183,13 @@ def get_engine():
     return _ENGINE
 
 
-def get_maker(engine, autocommit=True, expire_on_commit=False):
+def get_maker(engine, autocommit=True, expire_on_commit=False, scoped=False):
     """Return a SQLAlchemy sessionmaker using the given engine."""
-    return sqlalchemy.orm.sessionmaker(bind=engine,
-                                       autocommit=autocommit,
-                                       expire_on_commit=expire_on_commit)
+    session = sqlalchemy.orm.sessionmaker(bind=engine,
+                                          autocommit=autocommit,
+                                          expire_on_commit=expire_on_commit)
+
+    return scoped and session or sqlalchemy.orm.scoped_session(session)
 
 
 def func():

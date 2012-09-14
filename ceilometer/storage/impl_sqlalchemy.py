@@ -22,10 +22,8 @@ import datetime
 from ceilometer.openstack.common import log
 from ceilometer.openstack.common import cfg
 from ceilometer.storage import base
-from ceilometer.storage.sqlalchemy.models import User, UserSource, Source
-from ceilometer.storage.sqlalchemy.models import Resource, ResourceSource
-from ceilometer.storage.sqlalchemy.models import Project, ProjectSource
-from ceilometer.storage.sqlalchemy.models import Meter, MeterSource
+from ceilometer.storage.sqlalchemy.models import Meter, Project, Resource
+from ceilometer.storage.sqlalchemy.models import Source, User
 from ceilometer.storage.sqlalchemy.session import get_session
 import ceilometer.storage.sqlalchemy.session as session
 
@@ -128,8 +126,8 @@ class Connection(base.Connection):
         self.session.flush()
 
         project = self.session.merge(Project(id=data['project_id']))
-        #if not filter(lambda x: x.name == source, project.sources):
-        #    project.sources.append(ProjectSource(name=source))
+        if source not in project.sources:
+            project.sources.append(source)
 
         self.session.flush()
 
@@ -138,8 +136,8 @@ class Connection(base.Connection):
         rmetadata = data['resource_metadata']
 
         resource = self.session.merge(Resource(id=data['resource_id']))
-        #if not filter(lambda x: x.name == source, resource.sources):
-        #    resource.sources.append(ResourceSource(name=source))
+        if source not in resource.sources:
+            resource.sources.append(source)
         resource.project = project
         resource.user = user
         resource.timestamp = data['timestamp']
@@ -153,10 +151,10 @@ class Connection(base.Connection):
         meter = self.session.merge(Meter(counter_type=data['counter_type'],
                                          counter_name=data['counter_name'],
                                          resource=resource))
+        if source not in meter.sources:
+            meter.sources.append(source)
         meter.project = project
         meter.user = user
-        #if not filter(lambda x: x.name == source, meter.sources):
-        #    meter.sources.append(MeterSource(name=source))
         meter.timestamp = data['timestamp']
         meter.resource_metadata = rmetadata
         meter.counter_duration = data['counter_duration']
@@ -185,9 +183,8 @@ class Connection(base.Connection):
         """
         query = model_query(Project, session=self.session)
         if source:
-            query = query.join(ProjectSource).\
-                        filter(ProjectSource.name == source)
-        return [x.id for x in query.all()]
+            query = query.filter(Project.sources.contains(source))
+        return (x[0] for x in query.all())
 
     def get_resources(self, user=None, project=None, source=None,
                       start_timestamp=None, end_timestamp=None,
@@ -211,19 +208,14 @@ class Connection(base.Connection):
         query = model_query(Resource, session=session)
         if user is not None:
             query = query.filter(Resource.user_id == user)
-
-        query = query.join(Meter)
-        if user is not None:
-            query = query.filter(Meter.user_id == user)
-        if start_timestamp is not None:
-            query = query.filter(Meter.timestamp >= start_timestamp)
-        if end_timestamp:
-            query = query.filter(Meter.timestamp <= end_timestamp)
-        if project is not None:
-            query = query.filter(Meter.project_id == project)
         if source is not None:
-            query = query.join(ResourceSource)
-            query = query.filter(ResourceSource.name == source)
+            query = query.filter(Resource.sources.contains(source))
+        if start_timestamp is not None:
+            query = query.filter(Resource.timestamp >= start_timestamp)
+        if end_timestamp:
+            query = query.filter(Resource.timestamp <= end_timestamp)
+        if project is not None:
+            query = query.filter(Resource.project_id == project)
 
         for resource in query.all():
             r = row2dict(resource)

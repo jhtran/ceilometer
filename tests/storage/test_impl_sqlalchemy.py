@@ -28,10 +28,12 @@ from ceilometer import counter
 from ceilometer import meter
 from ceilometer import storage
 from ceilometer.storage import migration
-from ceilometer.storage import impl_sqlalchemy
-from ceilometer.storage.sqlalchemy.models import User, UserSource, Resource
-from ceilometer.storage.sqlalchemy.models import Project, ProjectSource, Meter
 import ceilometer.openstack.common.cfg as cfg
+# models.py errors if uses default mongodb database_connection
+cfg.CONF.database_connection = 'sqlite:///testdb.sqlite'
+from ceilometer.storage import impl_sqlalchemy
+from ceilometer.storage.sqlalchemy.models import Meter, Project, Resource
+from ceilometer.storage.sqlalchemy.models import Source, User
 
 
 LOG = logging.getLogger(__name__)
@@ -53,7 +55,6 @@ class SQLAlchemyEngineTestBase(unittest.TestCase):
         super(SQLAlchemyEngineTestBase, self).setUp()
 
         self.conf = cfg.CONF
-        self.conf.database_connection = 'sqlite:///testdb.sqlite'
         testdbf = os.path.join('../tests/testdb.sqlite')
         if os.path.exists(testdbf):
             os.remove(testdbf)
@@ -140,15 +141,13 @@ class UserTest(SQLAlchemyEngineTestBase):
     def test_new_user_source(self):
         user = self.session.query(User).get(11)
         assert hasattr(user, 'sources')
-        assert map(lambda x: x.name, user.sources) == ['test-1', 'test-2']
+        assert user.sources == ['test-1', 'test-2']
 
     def test_get_users(self):
         assert set(self.conn.get_users()) == set([2, 3, 11, 12])
 
     def test_get_users_by_source(self):
-        users = self.conn.get_users(source='test-1')
-        assert len(users) == 1
-        assert users == [11]
+        assert set(self.conn.get_users(source='test-1')) == set([11])
 
 
 class ProjectTest(SQLAlchemyEngineTestBase):

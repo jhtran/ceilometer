@@ -30,6 +30,7 @@ from sqlalchemy import ForeignKey, DateTime, Boolean, Text, Float
 from sqlalchemy.orm import relationship, backref, object_mapper
 from sqlalchemy.types import TypeDecorator, VARCHAR
 
+from ceilometer.storage.sqlalchemy.recipes import unique_constructor
 from ceilometer.storage.sqlalchemy.session import get_session
 from ceilometer.openstack.common import timeutils
 
@@ -112,9 +113,25 @@ class CeilometerBase(object):
 
 
 sourceassoc = Table('sourceassoc', BASE.metadata,
+    Column('meter_id', Integer, ForeignKey("meter.id")),
+    Column('project_id', Integer, ForeignKey("project.id")),
+    Column('resource_id', Integer, ForeignKey("resource.id")),
     Column('user_id', Integer, ForeignKey("user.id")),
     Column('source_id', Integer, ForeignKey("source.id"))
 )
+
+
+@unique_constructor(get_session(scoped=True), 
+            lambda name:name, 
+            lambda query, name:query.filter(Source.name==name)
+)
+class Source(BASE, CeilometerBase):
+    __tablename__ = 'source'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255))
+
+    def __init__(self, name):
+        self.name = name
 
 
 class Meter(BASE, CeilometerBase):
@@ -123,8 +140,8 @@ class Meter(BASE, CeilometerBase):
     __tablename__ = 'meter'
     id = Column(Integer, primary_key=True)
     counter_name = Column(String(255))
-    srcs = relationship("Source", lazy='joined')
-    sources = association_proxy('srcs', 'name')
+    src = relationship("Source", secondary=lambda: sourceassoc, lazy='joined')
+    sources = association_proxy('src', 'name')
     user_id = Column(Integer, ForeignKey('user.id'))
     project_id = Column(Integer, ForeignKey('project.id'))
     resource_id = Column(Integer, ForeignKey('resource.id'))
@@ -146,35 +163,11 @@ class User(BASE, CeilometerBase):
     meters = relationship("Meter", backref='user')
 
 
-class Source(BASE, CeilometerBase):
-    __tablename__ = 'source'
-    id = Column(Integer, primary_key=True)
-    name = Column(String(255))
-
-    def __init__(self, name):
-        self.name = name
-
-
-class MeterSource(Source):
-    meter_id = Column(Integer, ForeignKey('meter.id'))
-
-
-class UserSource(Source):
-    user_id = Column(Integer, ForeignKey('user.id'))
-
-
-class ResourceSource(Source):
-    resource_id = Column(Integer, ForeignKey('resource.id'))
-
-
-class ProjectSource(Source):
-    project_id = Column(Integer, ForeignKey('project.id'))
-
-
 class Project(BASE, CeilometerBase):
     __tablename__ = 'project'
     id = Column(Integer, primary_key=True)
-    sources = relationship("Source")
+    src = relationship("Source", secondary=lambda: sourceassoc)
+    sources = association_proxy('src', 'name')
     resources = relationship("Resource", backref='project')
     meters = relationship("Meter", backref='project')
 
@@ -182,7 +175,8 @@ class Project(BASE, CeilometerBase):
 class Resource(BASE, CeilometerBase):
     __tablename__ = 'resource'
     id = Column(Integer, primary_key=True)
-    sources = relationship("Source")
+    src = relationship("Source", secondary=lambda: sourceassoc)
+    sources = association_proxy('src', 'name')
     timestamp = Column(DateTime)
     resource_metadata = Column(JSONEncodedDict)
     received_timestamp = Column(DateTime, default=timeutils.utcnow)
