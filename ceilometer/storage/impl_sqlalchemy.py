@@ -174,7 +174,7 @@ class Connection(base.Connection):
         """
         query = model_query(User.id, session=self.session)
         if source is not None:
-            query = query.filter(User.sources.filter_by(Source.name=source))
+            query = query.filter(User.sources.filter_by(name=source))
         return (x[0] for x in query.all())
 
     def get_projects(self, source=None):
@@ -184,7 +184,7 @@ class Connection(base.Connection):
         """
         query = model_query(Project, session=self.session)
         if source:
-            query = query.filter(Project.sources.filter_by(Source.name=source))
+            query = query.filter(Project.sources.filter_by(name=source))
         return (x[0] for x in query.all())
 
     def get_resources(self, user=None, project=None, source=None,
@@ -211,7 +211,7 @@ class Connection(base.Connection):
             query = query.filter(Resource.user_id == user)
         if source is not None:
             query = query.filter(Resource.sources.\
-                                 filter_by(Source.name=source))
+                                 filter_by(name=source))
         if start_timestamp is not None:
             query = query.filter(Resource.timestamp >= start_timestamp)
         if end_timestamp:
