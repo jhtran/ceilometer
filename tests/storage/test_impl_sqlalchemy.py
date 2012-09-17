@@ -48,12 +48,17 @@ class Connection(impl_sqlalchemy.Connection):
 
 
 class SQLAlchemyEngineTestBase(unittest.TestCase):
+    def tearDown(self):
+        super(SQLAlchemyEngineTestBase, self).tearDown()
+        self.session.close_all()
+        self.session.bind.dispose()
+
 
     def setUp(self):
         super(SQLAlchemyEngineTestBase, self).setUp()
 
         self.conf = cfg.CONF
-        cfg.CONF.database_connection = 'sqlite:///testdb.sqlite'
+        cfg.CONF.database_connection = 'sqlite://'
         migration.db_sync()
         self.conn = Connection(self.conf)
         self.session = self.conn.session
