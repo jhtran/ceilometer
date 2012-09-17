@@ -116,14 +116,13 @@ sourceassoc = Table('sourceassoc', BASE.metadata,
     Column('project_id', String(255), ForeignKey("project.id")),
     Column('resource_id', String(255), ForeignKey("resource.id")),
     Column('user_id', String(255), ForeignKey("user.id")),
-    Column('source_id', Integer, ForeignKey("source.id"))
+    Column('source_id', String(255), ForeignKey("source.id"))
 )
 
 
 class Source(BASE, CeilometerBase):
     __tablename__ = 'source'
-    id = Column(Integer, primary_key=True)
-    name = Column(String(255))
+    id = Column(String(255), primary_key=True)
 
 
 class Meter(BASE, CeilometerBase):

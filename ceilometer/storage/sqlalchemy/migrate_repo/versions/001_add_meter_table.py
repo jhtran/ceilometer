@@ -41,7 +41,7 @@ project = Table(
 
 sourceassoc = Table(
     'sourceassoc', meta,
-    Column('source_id', Integer),
+    Column('source_id', String(255)),
     Column('user_id', String(255)),
     Column('project_id', String(255)),
     Column('resource_id', String(255)),
@@ -50,9 +50,8 @@ sourceassoc = Table(
 
 source = Table(
     'source', meta,
-    Column('id', Integer, primary_key=True),
-    Column('name', String(255)),
-    UniqueConstraint('name')
+    Column('id', String(255), primary_key=True),
+    UniqueConstraint('id')
 )
 
 

@@ -142,7 +142,7 @@ class UserTest(SQLAlchemyEngineTestBase):
         user = self.session.query(User).get('user-id')
         assert hasattr(user, 'sources')
         sources = user.sources
-        assert map(lambda x: x.name, user.sources) == ['test-1', 'test-2']
+        assert map(lambda x: x.id, user.sources) == ['test-1', 'test-2']
 
     def test_get_users(self):
         users = self.conn.get_users()
@@ -163,7 +163,7 @@ class ProjectTest(SQLAlchemyEngineTestBase):
         project = self.session.query(Project).get('project-id')
         assert hasattr(project, 'sources')
         expected = ['test-1', 'test-2', 'test-3']
-        assert map(lambda x: x.name, project.sources) == expected
+        assert map(lambda x: x.id, project.sources) == expected
 
     def test_get_projects(self):
         projects = self.session.query(Project).all()
@@ -282,7 +282,7 @@ class MeterTest(SQLAlchemyEngineTestBase):
 
     def _iterate_msgs(self, results):
         for meter in results:
-            labels = map(lambda x: x['name'], meter['sources'])
+            labels = map(lambda x: x['id'], meter['sources'])
             # should only have one source
             assert len(labels) == 1
             count = re.match('test-(\d+)', labels[0]).group(1)
