@@ -22,7 +22,6 @@ import abc
 
 from ceilometer.openstack.common import log
 
-
 LOG = log.getLogger(__name__)
 
 

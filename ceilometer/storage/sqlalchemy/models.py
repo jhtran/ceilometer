@@ -34,9 +34,6 @@ from ceilometer.storage.sqlalchemy.session import get_session
 from ceilometer.openstack.common import timeutils
 
 
-BASE = declarative_base()
-
-
 class JSONEncodedDict(TypeDecorator):
     "Represents an immutable structure as a json-encoded string."
 
@@ -111,7 +108,10 @@ class CeilometerBase(object):
         return local.iteritems()
 
 
-sourceassoc = Table('sourceassoc', BASE.metadata,
+Base = declarative_base(cls=CeilometerBase)
+
+
+sourceassoc = Table('sourceassoc', Base.metadata,
     Column('meter_id', Integer, ForeignKey("meter.id")),
     Column('project_id', String(255), ForeignKey("project.id")),
     Column('resource_id', String(255), ForeignKey("resource.id")),
@@ -120,12 +120,12 @@ sourceassoc = Table('sourceassoc', BASE.metadata,
 )
 
 
-class Source(BASE, CeilometerBase):
+class Source(Base):
     __tablename__ = 'source'
     id = Column(String(255), primary_key=True)
 
 
-class Meter(BASE, CeilometerBase):
+class Meter(Base):
     """Metering data"""
 
     __tablename__ = 'meter'
@@ -145,7 +145,7 @@ class Meter(BASE, CeilometerBase):
     message_id = Column(String)
 
 
-class User(BASE, CeilometerBase):
+class User(Base):
     __tablename__ = 'user'
     id = Column(String(255), primary_key=True)
     sources = relationship("Source", secondary=lambda: sourceassoc)
@@ -153,7 +153,7 @@ class User(BASE, CeilometerBase):
     meters = relationship("Meter", backref='user', lazy='joined')
 
 
-class Project(BASE, CeilometerBase):
+class Project(Base):
     __tablename__ = 'project'
     id = Column(String(255), primary_key=True)
     sources = relationship("Source", secondary=lambda: sourceassoc)
@@ -161,7 +161,7 @@ class Project(BASE, CeilometerBase):
     meters = relationship("Meter", backref='project', lazy='joined')
 
 
-class Resource(BASE, CeilometerBase):
+class Resource(Base):
     __tablename__ = 'resource'
     id = Column(String(255), primary_key=True)
     sources = relationship("Source", secondary=lambda: sourceassoc)
