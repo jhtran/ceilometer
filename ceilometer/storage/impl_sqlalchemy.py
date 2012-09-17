@@ -117,7 +117,11 @@ class Connection(base.Connection):
         :param data: a dictionary such as returned by
                      ceilometer.meter.meter_message_from_counter
         """
-        source = self.session.merge(Source(name=data['source']))
+        source = self.session.query(Source).\
+                              filter_by(name=data['source']).first()
+        if not source:
+            source = self.session.add(Source(name=data['source']))
+            self.session.flush()
 
         # create/update user && project, add/update their sources list
         user = self.session.merge(User(id=data['user_id']))
@@ -149,9 +153,15 @@ class Connection(base.Connection):
         self.session.flush()
 
         # Record the raw data for the event.
-        meter = self.session.merge(Meter(counter_type=data['counter_type'],
-                                         counter_name=data['counter_name'],
-                                         resource=resource))
+        meter = self.session.query(Meter).\
+                             filter_by(counter_type=data['counter_type']).\
+                             filter_by(counter_name=data['counter_name']).\
+                             filter_by(resource_id=resource.id).first()
+        if not meter:
+            meter = Meter(counter_type=data['counter_type'],
+                          counter_name=data['counter_name'],
+                          resource=resource)
+            self.session.add(meter)
         if not filter(lambda x: x.name == source.name, meter.sources):
             meter.sources.append(source)
         meter.project = project
@@ -306,6 +316,6 @@ def row2dict(row, srcflag=None):
     for col in ['_sa_instance_state', 'sources']:
         if col in d:
             del d[col]
-    if srcflag is None:
+    if not srcflag:
         d['sources'] = map(lambda x: row2dict(x, True), row.sources)
     return d

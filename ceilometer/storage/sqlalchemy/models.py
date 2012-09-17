@@ -125,9 +125,6 @@ class Source(BASE, CeilometerBase):
     id = Column(Integer, primary_key=True)
     name = Column(String(255))
 
-    def __init__(self, name):
-        self.name = name
-
 
 class Meter(BASE, CeilometerBase):
     """Metering data"""
@@ -152,8 +149,7 @@ class Meter(BASE, CeilometerBase):
 class User(BASE, CeilometerBase):
     __tablename__ = 'user'
     id = Column(Integer, primary_key=True)
-    sources = relationship("Source", secondary=lambda: sourceassoc,
-                           lazy='joined')
+    sources = relationship("Source", secondary=lambda: sourceassoc)
     resources = relationship("Resource", backref='user')
     meters = relationship("Meter", backref='user')
 
@@ -161,8 +157,7 @@ class User(BASE, CeilometerBase):
 class Project(BASE, CeilometerBase):
     __tablename__ = 'project'
     id = Column(Integer, primary_key=True)
-    sources = relationship("Source", secondary=lambda: sourceassoc,
-                           lazy='joined')
+    sources = relationship("Source", secondary=lambda: sourceassoc)
     resources = relationship("Resource", backref='project')
     meters = relationship("Meter", backref='project')
 
@@ -170,8 +165,7 @@ class Project(BASE, CeilometerBase):
 class Resource(BASE, CeilometerBase):
     __tablename__ = 'resource'
     id = Column(Integer, primary_key=True)
-    sources = relationship("Source", secondary=lambda: sourceassoc,
-                           lazy='joined')
+    sources = relationship("Source", secondary=lambda: sourceassoc)
     timestamp = Column(DateTime)
     resource_metadata = Column(JSONEncodedDict)
     received_timestamp = Column(DateTime, default=timeutils.utcnow)
