@@ -67,9 +67,9 @@ class SQLAlchemyEngineTestBase(unittest.TestCase):
             'instance',
             'cumulative',
             volume=1,
-            user_id=11,
-            project_id=1,
-            resource_id=111,
+            user_id='user-id',
+            project_id='project-id',
+            resource_id='resource-id',
             timestamp=datetime.datetime(2012, 7, 2, 10, 40),
             duration=0,
             resource_metadata={'display_name': 'test-server',
@@ -84,9 +84,9 @@ class SQLAlchemyEngineTestBase(unittest.TestCase):
             'instance',
             'cumulative',
             volume=1,
-            user_id=11,
-            project_id=1,
-            resource_id=112,
+            user_id='user-id',
+            project_id='project-id',
+            resource_id='resource-id-alternate',
             timestamp=datetime.datetime(2012, 7, 2, 10, 41),
             duration=0,
             resource_metadata={'display_name': 'test-server',
@@ -101,9 +101,9 @@ class SQLAlchemyEngineTestBase(unittest.TestCase):
             'instance',
             'cumulative',
             volume=1,
-            user_id=12,
-            project_id=1,
-            resource_id=112,
+            user_id='user-id-alternate',
+            project_id='project-id',
+            resource_id='resource-id-alternate',
             timestamp=datetime.datetime(2012, 7, 2, 10, 41),
             duration=0,
             resource_metadata={'display_name': 'test-server',
@@ -119,9 +119,9 @@ class SQLAlchemyEngineTestBase(unittest.TestCase):
                 'instance',
                 'cumulative',
                 1,
-                '%s' % i,
-                '%s' % i,
-                '%s' % i,
+                'user-id-%s' % i,
+                'project-id-%s' % i,
+                'resource-id-%s' % i,
                 timestamp=datetime.datetime(2012, 7, 2, 10, 40 + i),
                 duration=0,
                 resource_metadata={'display_name': 'test-server',
@@ -135,30 +135,32 @@ class SQLAlchemyEngineTestBase(unittest.TestCase):
 class UserTest(SQLAlchemyEngineTestBase):
 
     def test_new_user(self):
-        user = self.session.query(User).get(11)
+        user = self.session.query(User).get('user-id')
         assert user is not None
 
     def test_new_user_source(self):
-        user = self.session.query(User).get(11)
+        user = self.session.query(User).get('user-id')
         assert hasattr(user, 'sources')
         sources = user.sources
         assert map(lambda x: x.name, user.sources) == ['test-1', 'test-2']
 
     def test_get_users(self):
-        assert set(self.conn.get_users()) == set([2, 3, 11, 12])
+        users = self.conn.get_users()
+        expect =set(['user-id', 'user-id-alternate', 'user-id-2', 'user-id-3'])
+        assert set(self.conn.get_users()) == expect
 
     def test_get_users_by_source(self):
-        assert set(self.conn.get_users(source='test-1')) == set([11])
+        assert set(self.conn.get_users(source='test-1')) == set(['user-id'])
 
 
 class ProjectTest(SQLAlchemyEngineTestBase):
 
     def test_new_project(self):
-        project = self.session.query(Project).get(1)
+        project = self.session.query(Project).get('project-id')
         assert project is not None
 
     def test_new_project_source(self):
-        project = self.session.query(Project).get(1)
+        project = self.session.query(Project).get('project-id')
         assert hasattr(project, 'sources')
         expected = ['test-1', 'test-2', 'test-3']
         assert map(lambda x: x.name, project.sources) == expected
@@ -166,36 +168,40 @@ class ProjectTest(SQLAlchemyEngineTestBase):
     def test_get_projects(self):
         projects = self.session.query(Project).all()
         projects = map(lambda x: x.id, projects)
-        assert set(projects) == set([1, 2, 3])
+        expect = set(['project-id', 'project-id-2', 'project-id-3'])
+        assert set(projects) == expect
 
     def test_get_projects_by_source(self):
         projects = self.conn.get_projects(source='test-1')
-        assert list(projects) == [1]
+        assert list(projects) == ['project-id']
 
 
 class ResourceTest(SQLAlchemyEngineTestBase):
 
     def test_new_resource(self):
-        resource = self.session.query(Resource).get(111)
+        resource = self.session.query(Resource).get('resource-id')
         assert resource is not None
 
     def test_new_resource_project(self):
-        resource = self.session.query(Resource).get(111)
+        resource = self.session.query(Resource).get('resource-id')
         assert hasattr(resource, 'project')
-        assert resource.project.id == 1
+        assert resource.project.id == 'project-id'
 
     def test_new_resource_user(self):
-        resource = self.session.query(Resource).get(111)
+        resource = self.session.query(Resource).get('resource-id')
         assert hasattr(resource, 'user')
-        assert resource.user.id  == 11
+        assert resource.user.id  == 'user-id'
 
     def test_new_resource_meter(self):
-        assert self.session.query(Resource).filter_by(id=111).join(Meter).\
-                            filter(Meter.counter_name == 'instance').\
-                            filter(Meter.counter_type == 'cumulative').first()
+        resource = self.session.query(Resource).filter_by(id='resource-id').\
+                       filter(Meter.counter_name == 'instance').\
+                       filter(Meter.counter_type == 'cumulative').first()
+        assert len(set(resource.meters)) == 1
+        foo = map(lambda x: [x.counter_name, x.counter_type], resource.meters)
+        assert ['instance', 'cumulative'] in foo
 
     def test_new_resource_metadata(self):
-        resource = self.session.query(Resource).get(111)
+        resource = self.session.query(Resource).get('resource-id')
         assert hasattr(resource, 'metadata')
         metadata = resource.resource_metadata
         assert metadata['display_name'] == 'test-server'
@@ -203,25 +209,33 @@ class ResourceTest(SQLAlchemyEngineTestBase):
     def test_get_resources(self):
         resources = list(self.conn.get_resources())
         assert len(resources) == 4
-        resource = self.session.query(Resource).get(111)
-        assert resource.project.id == 1
-        assert resource.user.id == 11
-        assert hasattr(resource, 'metadata')
-        foo = map(lambda x: [x.counter_name, x.counter_type], resource.meters)
-        assert ['instance', 'cumulative'] in foo
+        for resource in resources:                                              
+            if resource['resource_id'] != 'resource-id':                        
+                continue                                                        
+            assert resource['resource_id'] == 'resource-id'                     
+            assert resource['project_id'] == 'project-id'                       
+            assert resource['user_id'] == 'user-id'                             
+            assert 'resource_metadata' in resource                                       
+            assert 'meters' in resource                                       
+            foo = map(lambda x: [x['counter_name'], x['counter_type']],
+                      resource['meters'])
+            assert ['instance', 'cumulative'] in foo
+            break                                                               
+        else:                                                                   
+            assert False, 'Never found resource-id'   
 
     def test_get_resources_start_timestamp(self):
         timestamp = datetime.datetime(2012, 7, 2, 10, 42)
         resources = list(self.conn.get_resources(start_timestamp=timestamp))
         resource_ids = [r['resource_id'] for r in resources]
-        expected = set([2, 3])
+        expected = set(['resource-id-2', 'resource-id-3'])
         assert set(resource_ids) == expected
 
     def test_get_resources_end_timestamp(self):
         timestamp = datetime.datetime(2012, 7, 2, 10, 42)
         resources = list(self.conn.get_resources(end_timestamp=timestamp))
         resource_ids = [r['resource_id'] for r in resources]
-        expected = set([111, 112, 2])
+        expected = set(['resource-id', 'resource-id-alternate'])
         assert set(resource_ids) == expected
 
     def test_get_resources_both_timestamps(self):
@@ -231,26 +245,25 @@ class ResourceTest(SQLAlchemyEngineTestBase):
                                                  end_timestamp=end_ts)
                         )
         resource_ids = [r['resource_id'] for r in resources]
-        expected = set([2, 3])
-        assert set(resource_ids) == expected
+        assert set(resource_ids) == set(['resource-id-2'])
 
     def test_get_resources_by_source(self):
         resources = list(self.conn.get_resources(source='test-1'))
         assert len(resources) == 1
         ids = set(r['resource_id'] for r in resources)
-        assert ids == set([111])
+        assert ids == set(['resource-id'])
 
     def test_get_resources_by_user(self):
-        resources = list(self.conn.get_resources(user=11))
+        resources = list(self.conn.get_resources(user='user-id'))
         assert len(resources) == 1
         ids = set(r['resource_id'] for r in resources)
-        assert ids == set([111])
+        assert ids == set(['resource-id'])
 
     def test_get_resources_by_project(self):
-        resources = list(self.conn.get_resources(project=1))
+        resources = list(self.conn.get_resources(project='project-id'))
         assert len(resources) == 2
         ids = set(r['resource_id'] for r in resources)
-        assert ids == set([111, 112])
+        assert ids == set(['resource-id', 'resource-id-alternate'])
 
 
 class MeterTest(SQLAlchemyEngineTestBase):
@@ -280,26 +293,26 @@ class MeterTest(SQLAlchemyEngineTestBase):
         assert meter is not None
 
     def test_get_raw_events_by_user(self):
-        f = storage.EventFilter(user=11)
+        f = storage.EventFilter(user='user-id')
         results = list(self.conn.get_raw_events(f))
         assert len(results) == 2
         self._iterate_msgs(results)
 
     def test_get_raw_events_by_project(self):
-        f = storage.EventFilter(project=1)
+        f = storage.EventFilter(project='project-id')
         results = list(self.conn.get_raw_events(f))
         assert len(results) == 3
         self._iterate_msgs(results)
 
     def test_get_raw_events_by_resource(self):
-        f = storage.EventFilter(user=11, resource=111)
+        f = storage.EventFilter(user='user-id', resource='resource-id')
         results = list(self.conn.get_raw_events(f))
         assert len(results) == 1
         self._compare_raw(self.msg1, results[0])
 
     def test_get_raw_events_by_start_time(self):
         f = storage.EventFilter(
-            user=11,
+            user='user-id',
             start=datetime.datetime(2012, 7, 2, 10, 41),
             )
         results = list(self.conn.get_raw_events(f))
@@ -308,7 +321,7 @@ class MeterTest(SQLAlchemyEngineTestBase):
 
     def test_get_raw_events_by_end_time(self):
         f = storage.EventFilter(
-            user=11,
+            user='user-id',
             end=datetime.datetime(2012, 7, 2, 10, 41),
             )
         results = list(self.conn.get_raw_events(f))
@@ -327,12 +340,12 @@ class MeterTest(SQLAlchemyEngineTestBase):
         assert results[0]['timestamp'] == datetime.datetime(2012, 7, 2, 10, 42)
 
     def test_get_raw_events_by_meter(self):
-        f = storage.EventFilter(user=11, meter='no-such-meter')
+        f = storage.EventFilter(user='user-id', meter='no-such-meter')
         results = list(self.conn.get_raw_events(f))
         assert not results
 
     def test_get_raw_events_by_meter2(self):
-        f = storage.EventFilter(user=11, meter='instance')
+        f = storage.EventFilter(user='user-id', meter='instance')
         results = list(self.conn.get_raw_events(f))
         assert results
 

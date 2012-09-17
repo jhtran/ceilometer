@@ -113,9 +113,9 @@ class CeilometerBase(object):
 
 sourceassoc = Table('sourceassoc', BASE.metadata,
     Column('meter_id', Integer, ForeignKey("meter.id")),
-    Column('project_id', Integer, ForeignKey("project.id")),
-    Column('resource_id', Integer, ForeignKey("resource.id")),
-    Column('user_id', Integer, ForeignKey("user.id")),
+    Column('project_id', String(255), ForeignKey("project.id")),
+    Column('resource_id', String(255), ForeignKey("resource.id")),
+    Column('user_id', String(255), ForeignKey("user.id")),
     Column('source_id', Integer, ForeignKey("source.id"))
 )
 
@@ -134,9 +134,9 @@ class Meter(BASE, CeilometerBase):
     counter_name = Column(String(255))
     sources = relationship("Source", secondary=lambda: sourceassoc,
                            lazy='joined')
-    user_id = Column(Integer, ForeignKey('user.id'))
-    project_id = Column(Integer, ForeignKey('project.id'))
-    resource_id = Column(Integer, ForeignKey('resource.id'))
+    user_id = Column(String(255), ForeignKey('user.id'))
+    project_id = Column(String(255), ForeignKey('project.id'))
+    resource_id = Column(String(255), ForeignKey('resource.id'))
     resource_metadata = Column(JSONEncodedDict)
     counter_type = Column(String(255))
     counter_volume = Column(Integer)
@@ -148,27 +148,27 @@ class Meter(BASE, CeilometerBase):
 
 class User(BASE, CeilometerBase):
     __tablename__ = 'user'
-    id = Column(Integer, primary_key=True)
+    id = Column(String(255), primary_key=True)
     sources = relationship("Source", secondary=lambda: sourceassoc)
     resources = relationship("Resource", backref='user')
-    meters = relationship("Meter", backref='user')
+    meters = relationship("Meter", backref='user', lazy='joined')
 
 
 class Project(BASE, CeilometerBase):
     __tablename__ = 'project'
-    id = Column(Integer, primary_key=True)
+    id = Column(String(255), primary_key=True)
     sources = relationship("Source", secondary=lambda: sourceassoc)
     resources = relationship("Resource", backref='project')
-    meters = relationship("Meter", backref='project')
+    meters = relationship("Meter", backref='project', lazy='joined')
 
 
 class Resource(BASE, CeilometerBase):
     __tablename__ = 'resource'
-    id = Column(Integer, primary_key=True)
+    id = Column(String(255), primary_key=True)
     sources = relationship("Source", secondary=lambda: sourceassoc)
     timestamp = Column(DateTime)
     resource_metadata = Column(JSONEncodedDict)
     received_timestamp = Column(DateTime, default=timeutils.utcnow)
-    user_id = Column(Integer, ForeignKey('user.id'))
-    project_id = Column(Integer, ForeignKey('project.id'))
-    meters = relationship("Meter", backref='resource')
+    user_id = Column(String(255), ForeignKey('user.id'))
+    project_id = Column(String(255), ForeignKey('project.id'))
+    meters = relationship("Meter", backref='resource', lazy='joined')

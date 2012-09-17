@@ -219,7 +219,7 @@ class Connection(base.Connection):
         if start_timestamp is not None:
             query = query.filter(Resource.timestamp >= start_timestamp)
         if end_timestamp:
-            query = query.filter(Resource.timestamp <= end_timestamp)
+            query = query.filter(Resource.timestamp < end_timestamp)
         if project is not None:
             query = query.filter(Resource.project_id == project)
 
