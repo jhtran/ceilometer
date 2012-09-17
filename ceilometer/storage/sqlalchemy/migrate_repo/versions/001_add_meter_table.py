@@ -10,7 +10,7 @@ meter = Table(
     Column('user_id', String(255)),
     Column('project_id', String(255)),
     Column('resource_id', String(255)),
-    Column('resource_metadata', String),
+    Column('resource_metadata', Unicode),
     Column('counter_type', String(255)),
     Column('counter_volume', Integer),
     Column('counter_duration', Integer),
@@ -22,7 +22,7 @@ meter = Table(
 resource = Table(
     'resource', meta,
     Column('id', String(255), primary_key=True),
-    Column('resource_metadata', String),
+    Column('resource_metadata', Unicode),
     Column('project_id', String(255)),
     Column('received_timestamp', DateTime(timezone=False)),
     Column('timestamp', DateTime(timezone=False)),
