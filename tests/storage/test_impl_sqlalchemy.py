@@ -53,7 +53,7 @@ class SQLAlchemyEngineTestBase(unittest.TestCase):
         super(SQLAlchemyEngineTestBase, self).setUp()
 
         self.conf = cfg.CONF
-        cfg.CONF.database_connection = 'sqlite://'
+        cfg.CONF.database_connection = 'sqlite:///testdb.sqlite'
         migration.db_sync()
         self.conn = Connection(self.conf)
         self.session = self.conn.session
