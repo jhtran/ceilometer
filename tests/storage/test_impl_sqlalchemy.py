@@ -29,8 +29,6 @@ from ceilometer import meter
 from ceilometer import storage
 from ceilometer.storage import migration
 import ceilometer.openstack.common.cfg as cfg
-# models.py errors if uses default mongodb database_connection
-cfg.CONF.database_connection = 'sqlite:///testdb.sqlite'
 from ceilometer.storage import impl_sqlalchemy
 from ceilometer.storage.sqlalchemy.models import Meter, Project, Resource
 from ceilometer.storage.sqlalchemy.models import Source, User
@@ -55,9 +53,7 @@ class SQLAlchemyEngineTestBase(unittest.TestCase):
         super(SQLAlchemyEngineTestBase, self).setUp()
 
         self.conf = cfg.CONF
-        testdbf = os.path.join('../tests/testdb.sqlite')
-        if os.path.exists(testdbf):
-            os.remove(testdbf)
+        cfg.CONF.database_connection = 'sqlite://'
         migration.db_sync()
         self.conn = Connection(self.conf)
         self.session = self.conn.session
