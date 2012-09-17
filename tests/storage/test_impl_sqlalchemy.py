@@ -141,7 +141,8 @@ class UserTest(SQLAlchemyEngineTestBase):
     def test_new_user_source(self):
         user = self.session.query(User).get(11)
         assert hasattr(user, 'sources')
-        assert user.sources == ['test-1', 'test-2']
+        sources = user.sources
+        assert map(lambda x: x.name, user.sources) == ['test-1', 'test-2']
 
     def test_get_users(self):
         assert set(self.conn.get_users()) == set([2, 3, 11, 12])
@@ -160,7 +161,7 @@ class ProjectTest(SQLAlchemyEngineTestBase):
         project = self.session.query(Project).get(1)
         assert hasattr(project, 'sources')
         sources = map(lambda x: x.name, project.sources)
-        assert sources == ['test-1', 'test-2', 'test-3']
+        assert map(lambda x: x.name, sources) == ['test-1', 'test-2', 'test-3']
 
     def test_get_projects(self):
         projects = self.session.query(Project).all()
