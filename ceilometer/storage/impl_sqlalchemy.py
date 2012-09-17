@@ -154,15 +154,9 @@ class Connection(base.Connection):
         self.session.flush()
 
         # Record the raw data for the event.
-        meter = self.session.query(Meter).\
-                             filter_by(counter_type=data['counter_type']).\
-                             filter_by(counter_name=data['counter_name']).\
-                             filter_by(resource_id=resource.id).first()
-        if not meter:
-            meter = Meter(counter_type=data['counter_type'],
-                          counter_name=data['counter_name'],
-                          resource=resource)
-            self.session.add(meter)
+        meter = Meter(counter_type=data['counter_type'],
+                      counter_name=data['counter_name'], resource=resource)
+        self.session.add(meter)
         if not filter(lambda x: x.name == source.name, meter.sources):
             meter.sources.append(source)
         meter.project = project
@@ -193,7 +187,7 @@ class Connection(base.Connection):
 
         :param source: Optional source filter.
         """
-        query = model_query(Project, session=self.session)
+        query = model_query(Project.id, session=self.session)
         if source:
             query = query.filter(Project.sources.any(name=source))
         return (x[0] for x in query.all())

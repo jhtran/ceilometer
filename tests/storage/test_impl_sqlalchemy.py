@@ -160,8 +160,8 @@ class ProjectTest(SQLAlchemyEngineTestBase):
     def test_new_project_source(self):
         project = self.session.query(Project).get(1)
         assert hasattr(project, 'sources')
-        sources = map(lambda x: x.name, project.sources)
-        assert map(lambda x: x.name, sources) == ['test-1', 'test-2', 'test-3']
+        expected = ['test-1', 'test-2', 'test-3']
+        assert map(lambda x: x.name, project.sources) == expected
 
     def test_get_projects(self):
         projects = self.session.query(Project).all()
@@ -170,8 +170,7 @@ class ProjectTest(SQLAlchemyEngineTestBase):
 
     def test_get_projects_by_source(self):
         projects = self.conn.get_projects(source='test-1')
-        assert len(projects) == 1
-        assert projects == [1]
+        assert list(projects) == [1]
 
 
 class ResourceTest(SQLAlchemyEngineTestBase):
