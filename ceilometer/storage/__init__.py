@@ -51,8 +51,6 @@ def get_engine(conf):
     """Load the configured engine and return an instance.
     """
     engine_name = urlparse(conf.database_connection).scheme
-    if engine_name in ['mysql', 'sqlite']:
-        engine_name = 'sqlalchemy'
     LOG.debug('looking for %r driver in %r',
               engine_name, STORAGE_ENGINE_NAMESPACE)
     for ep in pkg_resources.iter_entry_points(STORAGE_ENGINE_NAMESPACE,

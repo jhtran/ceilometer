@@ -57,6 +57,8 @@ setuptools.setup(
     [ceilometer.storage]
     log = ceilometer.storage.impl_log:LogStorage
     mongodb = ceilometer.storage.impl_mongodb:MongoDBStorage
-    sqlalchemy = ceilometer.storage.impl_sqlalchemy:SQLAlchemyStorage
+    mysql = ceilometer.storage.impl_sqlalchemy:SQLAlchemyStorage
+    postgresql = ceilometer.storage.impl_sqlalchemy:SQLAlchemyStorage
+    sqlite = ceilometer.storage.impl_sqlalchemy:SQLAlchemyStorage
     """),
     )
