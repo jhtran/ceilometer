@@ -135,8 +135,8 @@ class Meter(BASE, CeilometerBase):
     __tablename__ = 'meter'
     id = Column(Integer, primary_key=True)
     counter_name = Column(String(255))
-    src = relationship("Source", secondary=lambda: sourceassoc, lazy='joined')
-    sources = association_proxy('src', 'name')
+    sources = relationship("Source", secondary=lambda: sourceassoc,
+                           lazy='joined')
     user_id = Column(Integer, ForeignKey('user.id'))
     project_id = Column(Integer, ForeignKey('project.id'))
     resource_id = Column(Integer, ForeignKey('resource.id'))
@@ -152,8 +152,8 @@ class Meter(BASE, CeilometerBase):
 class User(BASE, CeilometerBase):
     __tablename__ = 'user'
     id = Column(Integer, primary_key=True)
-    src = relationship("Source", secondary=lambda: sourceassoc)
-    sources = association_proxy('src', 'name')
+    sources = relationship("Source", secondary=lambda: sourceassoc,
+                           lazy='joined')
     resources = relationship("Resource", backref='user')
     meters = relationship("Meter", backref='user')
 
@@ -161,8 +161,8 @@ class User(BASE, CeilometerBase):
 class Project(BASE, CeilometerBase):
     __tablename__ = 'project'
     id = Column(Integer, primary_key=True)
-    src = relationship("Source", secondary=lambda: sourceassoc)
-    sources = association_proxy('src', 'name')
+    sources = relationship("Source", secondary=lambda: sourceassoc,
+                           lazy='joined')
     resources = relationship("Resource", backref='project')
     meters = relationship("Meter", backref='project')
 
@@ -170,8 +170,8 @@ class Project(BASE, CeilometerBase):
 class Resource(BASE, CeilometerBase):
     __tablename__ = 'resource'
     id = Column(Integer, primary_key=True)
-    src = relationship("Source", secondary=lambda: sourceassoc)
-    sources = association_proxy('src', 'name')
+    sources = relationship("Source", secondary=lambda: sourceassoc,
+                           lazy='joined')
     timestamp = Column(DateTime)
     resource_metadata = Column(JSONEncodedDict)
     received_timestamp = Column(DateTime, default=timeutils.utcnow)
