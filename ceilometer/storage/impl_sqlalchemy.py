@@ -117,16 +117,17 @@ class Connection(base.Connection):
         :param data: a dictionary such as returned by
                      ceilometer.meter.meter_message_from_counter
         """
+        source = self.session.merge(Source(name=data['source']))
+
         # create/update user && project, add/update their sources list
-        source = data['source']
         user = self.session.merge(User(id=data['user_id']))
-        if source not in user.sources:
+        if not filter(lambda x: x.name == source.name, user.sources):
             user.sources.append(source)
 
         self.session.flush()
 
         project = self.session.merge(Project(id=data['project_id']))
-        if source not in project.sources:
+        if not filter(lambda x: x.name == source.name, project.sources):
             project.sources.append(source)
 
         self.session.flush()
@@ -136,7 +137,7 @@ class Connection(base.Connection):
         rmetadata = data['resource_metadata']
 
         resource = self.session.merge(Resource(id=data['resource_id']))
-        if source not in resource.sources:
+        if not filter(lambda x: x.name == source.name, resource.sources):
             resource.sources.append(source)
         resource.project = project
         resource.user = user
@@ -151,7 +152,7 @@ class Connection(base.Connection):
         meter = self.session.merge(Meter(counter_type=data['counter_type'],
                                          counter_name=data['counter_name'],
                                          resource=resource))
-        if source not in meter.sources:
+        if not filter(lambda x: x.name == source.name, meter.sources):
             meter.sources.append(source)
         meter.project = project
         meter.user = user
@@ -173,7 +174,7 @@ class Connection(base.Connection):
         """
         query = model_query(User.id, session=self.session)
         if source is not None:
-            query = query.filter(User.sources.contains(source))
+            query = query.filter(User.sources.filter_by(Source.name=source))
         return (x[0] for x in query.all())
 
     def get_projects(self, source=None):
@@ -183,7 +184,7 @@ class Connection(base.Connection):
         """
         query = model_query(Project, session=self.session)
         if source:
-            query = query.filter(Project.sources.contains(source))
+            query = query.filter(Project.sources.filter_by(Source.name=source))
         return (x[0] for x in query.all())
 
     def get_resources(self, user=None, project=None, source=None,
@@ -209,7 +210,8 @@ class Connection(base.Connection):
         if user is not None:
             query = query.filter(Resource.user_id == user)
         if source is not None:
-            query = query.filter(Resource.sources.contains(source))
+            query = query.filter(Resource.sources.\
+                                 filter_by(Source.name=source))
         if start_timestamp is not None:
             query = query.filter(Resource.timestamp >= start_timestamp)
         if end_timestamp:

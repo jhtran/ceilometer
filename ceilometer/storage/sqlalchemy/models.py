@@ -30,7 +30,6 @@ from sqlalchemy import ForeignKey, DateTime, Boolean, Text, Float
 from sqlalchemy.orm import relationship, backref, object_mapper
 from sqlalchemy.types import TypeDecorator, VARCHAR
 
-from ceilometer.storage.sqlalchemy.recipes import unique_constructor
 from ceilometer.storage.sqlalchemy.session import get_session
 from ceilometer.openstack.common import timeutils
 
@@ -121,10 +120,6 @@ sourceassoc = Table('sourceassoc', BASE.metadata,
 )
 
 
-@unique_constructor(get_session(scoped=True), 
-            lambda name:name, 
-            lambda query, name:query.filter(Source.name==name)
-)
 class Source(BASE, CeilometerBase):
     __tablename__ = 'source'
     id = Column(Integer, primary_key=True)
