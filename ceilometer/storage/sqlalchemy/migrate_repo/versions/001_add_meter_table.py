@@ -10,19 +10,19 @@ meter = Table(
     Column('user_id', String(255)),
     Column('project_id', String(255)),
     Column('resource_id', String(255)),
-    Column('resource_metadata', Unicode),
+    Column('resource_metadata', String(5000)),
     Column('counter_type', String(255)),
     Column('counter_volume', Integer),
     Column('counter_duration', Integer),
     Column('timestamp', DateTime(timezone=False)),
-    Column('message_signature', String),
-    Column('message_id', String)
+    Column('message_signature', String(1000)),
+    Column('message_id', String(1000))
 )
 
 resource = Table(
     'resource', meta,
     Column('id', String(255), primary_key=True),
-    Column('resource_metadata', Unicode),
+    Column('resource_metadata', String(5000)),
     Column('project_id', String(255)),
     Column('received_timestamp', DateTime(timezone=False)),
     Column('timestamp', DateTime(timezone=False)),

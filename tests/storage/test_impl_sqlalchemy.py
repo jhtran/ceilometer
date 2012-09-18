@@ -23,6 +23,7 @@ import unittest
 import mox
 
 from nose.plugins import skip
+from sqlalchemy import MetaData, text
 
 from ceilometer import counter
 from ceilometer import meter
@@ -35,6 +36,10 @@ from ceilometer.storage.sqlalchemy.models import Source, User
 
 
 LOG = logging.getLogger(__name__)
+CEILOMETER_TEST_LIVE = bool(int(os.environ.get('CEILOMETER_TEST_LIVE', 0)))
+if CEILOMETER_TEST_LIVE:
+    MYSQL_DBNAME='ceilometer_test'
+    MYSQL_URL='mysql://ceilometer:somepass@localhost/%s' % MYSQL_DBNAME
 
 
 class Connection(impl_sqlalchemy.Connection):
@@ -48,8 +53,14 @@ class Connection(impl_sqlalchemy.Connection):
 
 
 class SQLAlchemyEngineTestBase(unittest.TestCase):
+
     def tearDown(self):
         super(SQLAlchemyEngineTestBase, self).tearDown()
+        engine_conn = self.session.bind.connect()
+        if CEILOMETER_TEST_LIVE:
+            engine_conn.execute(text('drop database %s' % MYSQL_DBNAME))
+            engine_conn.execute(text('create database %s' % MYSQL_DBNAME))
+        # needed for sqlite in-memory db to destroy
         self.session.close_all()
         self.session.bind.dispose()
 
@@ -58,10 +69,18 @@ class SQLAlchemyEngineTestBase(unittest.TestCase):
         super(SQLAlchemyEngineTestBase, self).setUp()
 
         self.conf = cfg.CONF
-        cfg.CONF.database_connection = 'sqlite://'
-        migration.db_sync()
+        self.conf.database_connection = 'sqlite://'
+        # Use a real MySQL server if we can connect, but fall back
+        # to a Sqlite in-memory connection if we cannot.
+        if CEILOMETER_TEST_LIVE:
+            # should pull from conf file but for now manually specified
+            # just make sure ceilometer_test db exists in mysql
+            self.conf.database_connection = MYSQL_URL
+
         self.conn = Connection(self.conf)
         self.session = self.conn.session
+
+        migration.db_sync()
 
         self.counter = counter.Counter(
             'test-1',

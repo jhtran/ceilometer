@@ -147,23 +147,26 @@ class Meter(Base):
 class User(Base):
     __tablename__ = 'user'
     id = Column(String(255), primary_key=True)
-    sources = relationship("Source", secondary=lambda: sourceassoc)
-    resources = relationship("Resource", backref='user')
+    sources = relationship("Source", secondary=lambda: sourceassoc,
+                           lazy='joined')
+    resources = relationship("Resource", backref='user', lazy='joined')
     meters = relationship("Meter", backref='user', lazy='joined')
 
 
 class Project(Base):
     __tablename__ = 'project'
     id = Column(String(255), primary_key=True)
-    sources = relationship("Source", secondary=lambda: sourceassoc)
-    resources = relationship("Resource", backref='project')
+    sources = relationship("Source", secondary=lambda: sourceassoc,
+                           lazy='joined')
+    resources = relationship("Resource", backref='project', lazy='joined')
     meters = relationship("Meter", backref='project', lazy='joined')
 
 
 class Resource(Base):
     __tablename__ = 'resource'
     id = Column(String(255), primary_key=True)
-    sources = relationship("Source", secondary=lambda: sourceassoc)
+    sources = relationship("Source", secondary=lambda: sourceassoc,
+                           lazy='joined')
     timestamp = Column(DateTime)
     resource_metadata = Column(JSONEncodedDict)
     received_timestamp = Column(DateTime, default=timeutils.utcnow)
