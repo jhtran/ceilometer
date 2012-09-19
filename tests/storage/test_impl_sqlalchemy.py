@@ -229,20 +229,20 @@ class ResourceTest(SQLAlchemyEngineTestBase):
     def test_get_resources(self):
         resources = list(self.conn.get_resources())
         assert len(resources) == 4
-        for resource in resources:                                              
-            if resource['resource_id'] != 'resource-id':                        
-                continue                                                        
-            assert resource['resource_id'] == 'resource-id'                     
-            assert resource['project_id'] == 'project-id'                       
-            assert resource['user_id'] == 'user-id'                             
-            assert 'resource_metadata' in resource                                       
-            assert 'meters' in resource                                       
+        for resource in resources:
+            if resource['resource_id'] != 'resource-id':
+                continue
+            assert resource['resource_id'] == 'resource-id'
+            assert resource['project_id'] == 'project-id'
+            assert resource['user_id'] == 'user-id'
+            assert 'resource_metadata' in resource
+            assert 'meters' in resource
             foo = map(lambda x: [x['counter_name'], x['counter_type']],
                       resource['meters'])
             assert ['instance', 'cumulative'] in foo
-            break                                                               
-        else:                                                                   
-            assert False, 'Never found resource-id'   
+            break
+        else:
+            assert False, 'Never found resource-id'
 
     def test_get_resources_start_timestamp(self):
         timestamp = datetime.datetime(2012, 7, 2, 10, 42)
