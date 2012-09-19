@@ -23,7 +23,6 @@ import time
 
 import sqlalchemy
 from sqlalchemy.exc import DisconnectionError, OperationalError
-import sqlalchemy.interfaces
 import sqlalchemy.orm
 from sqlalchemy.pool import NullPool, StaticPool
 
@@ -61,13 +60,13 @@ sql_opts = [
 cfg.CONF.register_opts(sql_opts)
 
 
-def get_session(autocommit=True, expire_on_commit=False):
+def get_session(autocommit=True, expire_on_commit=False, autoflush=True):
     """Return a SQLAlchemy session."""
     global _MAKER
 
     if _MAKER is None:
         engine = get_engine()
-        _MAKER = get_maker(engine, autocommit, expire_on_commit)
+        _MAKER = get_maker(engine, autocommit, expire_on_commit, autoflush)
 
     session = _MAKER()
     return session
@@ -184,10 +183,11 @@ def get_engine():
     return _ENGINE
 
 
-def get_maker(engine, autocommit=True, expire_on_commit=False):
+def get_maker(engine, autocommit=True, expire_on_commit=False, autoflush=True):
     """Return a SQLAlchemy sessionmaker using the given engine."""
     return sqlalchemy.orm.sessionmaker(bind=engine,
                                        autocommit=autocommit,
+                                       autoflush=autoflush,
                                        expire_on_commit=expire_on_commit)
 
 

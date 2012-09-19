@@ -121,20 +121,15 @@ class Connection(base.Connection):
         if not source:
             source = Source(id=data['source'])
             self.session.add(source)
-            self.session.flush()
 
         # create/update user && project, add/update their sources list
         user = self.session.merge(User(id=data['user_id']))
         if not filter(lambda x: x.id == source.id, user.sources):
             user.sources.append(source)
 
-        self.session.flush()
-
         project = self.session.merge(Project(id=data['project_id']))
         if not filter(lambda x: x.id == source.id, project.sources):
             project.sources.append(source)
-
-        self.session.flush()
 
         # Record the updated resource metadata
         rtimestamp = datetime.datetime.utcnow()
@@ -149,7 +144,7 @@ class Connection(base.Connection):
         resource.received_timestamp = rtimestamp
         # Current metadata being used and when it was last updated.
         resource.resource_metadata = rmetadata
-
+        # autoflush didn't catch this one, requires manual flush
         self.session.flush()
 
         # Record the raw data for the event.
@@ -166,8 +161,6 @@ class Connection(base.Connection):
         meter.counter_volume = data['counter_volume']
         meter.message_signature = data['message_signature']
         meter.message_id = data['message_id']
-
-        self.session.flush()
 
         return
 
