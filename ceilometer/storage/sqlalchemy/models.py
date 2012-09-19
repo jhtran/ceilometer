@@ -27,8 +27,25 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, DateTime
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.types import TypeDecorator, VARCHAR
+from urlparse import urlparse
 
+import ceilometer.openstack.common.cfg as cfg
 from ceilometer.openstack.common import timeutils
+
+sql_opts = [
+    cfg.IntOpt('mysql_engine',
+               default='InnoDB',
+               help='MySQL engine')
+           ]
+                                                                                
+cfg.CONF.register_opts(sql_opts)           
+
+
+def table_args():
+    engine_name = urlparse(cfg.CONF.database_connection).scheme
+    if engine_name == 'mysql':
+        return {'mysql_engine': cfg.CONF.mysql_engine}
+    return None
 
 
 class JSONEncodedDict(TypeDecorator):
@@ -49,7 +66,7 @@ class JSONEncodedDict(TypeDecorator):
 
 class CeilometerBase(object):
     """Base class for Ceilometer Models."""
-    __table_args__ = {'mysql_engine': 'InnoDB'}
+    __table_args__ = table_args()
     __table_initialized__ = False
 
     def __setitem__(self, key, value):
