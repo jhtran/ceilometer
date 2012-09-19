@@ -37,8 +37,8 @@ sql_opts = [
                default='InnoDB',
                help='MySQL engine')
            ]
-                                                                                
-cfg.CONF.register_opts(sql_opts)           
+
+cfg.CONF.register_opts(sql_opts)
 
 
 def table_args():
