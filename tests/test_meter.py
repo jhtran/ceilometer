@@ -171,4 +171,4 @@ def test_meter_message_from_counter_field():
                 }
     for f in TEST_COUNTER._fields:
         msg_f = name_map.get(f, f)
-        yield compare, f, getattr(TEST_COUNTER, f), msg_f, msg[msg_f]
+        yield compare, f, getattr(TEST_COUNTER, f), msg_f, msg[msg_f] 

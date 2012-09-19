@@ -38,8 +38,8 @@ from ceilometer.storage.sqlalchemy.models import Source, User
 LOG = logging.getLogger(__name__)
 CEILOMETER_TEST_LIVE = bool(int(os.environ.get('CEILOMETER_TEST_LIVE', 0)))
 if CEILOMETER_TEST_LIVE:
-    MYSQL_DBNAME='ceilometer_test'
-    MYSQL_URL='mysql://ceilometer:somepass@localhost/%s' % MYSQL_DBNAME
+    MYSQL_DBNAME = 'ceilometer_test'
+    MYSQL_URL = 'mysql://ceilometer:somepass@localhost/%s' % MYSQL_DBNAME
 
 
 class Connection(impl_sqlalchemy.Connection):
@@ -63,7 +63,6 @@ class SQLAlchemyEngineTestBase(unittest.TestCase):
         # needed for sqlite in-memory db to destroy
         self.session.close_all()
         self.session.bind.dispose()
-
 
     def setUp(self):
         super(SQLAlchemyEngineTestBase, self).setUp()
@@ -166,8 +165,8 @@ class UserTest(SQLAlchemyEngineTestBase):
 
     def test_get_users(self):
         users = self.conn.get_users()
-        expect =set(['user-id', 'user-id-alternate', 'user-id-2', 'user-id-3'])
-        assert set(self.conn.get_users()) == expect
+        xpct = set(['user-id', 'user-id-alternate', 'user-id-2', 'user-id-3'])
+        assert set(self.conn.get_users()) == xpct
 
     def test_get_users_by_source(self):
         assert set(self.conn.get_users(source='test-1')) == set(['user-id'])
@@ -210,7 +209,7 @@ class ResourceTest(SQLAlchemyEngineTestBase):
     def test_new_resource_user(self):
         resource = self.session.query(Resource).get('resource-id')
         assert hasattr(resource, 'user')
-        assert resource.user.id  == 'user-id'
+        assert resource.user.id == 'user-id'
 
     def test_new_resource_meter(self):
         resource = self.session.query(Resource).filter_by(id='resource-id').\
@@ -293,11 +292,11 @@ class MeterTest(SQLAlchemyEngineTestBase):
             if k in ['timestamp', 'source']:
                 continue
             if k == 'resource_metadata':
-               key = result_dict[k]
-               value = v
+                key = result_dict[k]
+                value = v
             else:
-               key = str(result_dict[k])
-               value = str(v)
+                key = str(result_dict[k])
+                value = str(v)
             assert key == value
 
     def _iterate_msgs(self, results):
@@ -306,7 +305,7 @@ class MeterTest(SQLAlchemyEngineTestBase):
             # should only have one source
             assert len(labels) == 1
             count = re.match('test-(\d+)', labels[0]).group(1)
-            self._compare_raw(getattr(self, 'msg'+count), meter)
+            self._compare_raw(getattr(self, 'msg' + count), meter)
 
     def test_new_meter(self):
         meter = self.session.query(Meter).first()
@@ -369,6 +368,7 @@ class MeterTest(SQLAlchemyEngineTestBase):
         results = list(self.conn.get_raw_events(f))
         assert results
 
+
 class TestGetEventInterval(SQLAlchemyEngineTestBase):
 
     def setUp(self):
@@ -383,10 +383,8 @@ class TestGetEventInterval(SQLAlchemyEngineTestBase):
         self.early1 = self.start - datetime.timedelta(minutes=20)
         self.early2 = self.start - datetime.timedelta(minutes=10)
 
-
         self.middle1 = self.start + datetime.timedelta(minutes=10)
         self.middle2 = self.end - datetime.timedelta(minutes=10)
-
 
         self.late1 = self.end + datetime.timedelta(minutes=10)
         self.late2 = self.end + datetime.timedelta(minutes=20)
