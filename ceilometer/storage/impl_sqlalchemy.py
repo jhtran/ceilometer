@@ -117,19 +117,28 @@ class Connection(base.Connection):
         :param data: a dictionary such as returned by
                      ceilometer.meter.meter_message_from_counter
         """
-        source = self.session.query(Source).get(data['source'])
-        if not source:
-            source = Source(id=data['source'])
-            self.session.add(source)
+        if data['source']:
+            source = self.session.query(Source).get(data['source'])
+            if not source:
+                source = Source(id=data['source'])
+                self.session.add(source)
+        else:
+            source = None
 
         # create/update user && project, add/update their sources list
-        user = self.session.merge(User(id=data['user_id']))
-        if not filter(lambda x: x.id == source.id, user.sources):
-            user.sources.append(source)
+        if data['user_id']:
+            user = self.session.merge(User(id=data['user_id']))
+            if not filter(lambda x: x.id == source.id, user.sources):
+                user.sources.append(source)
+        else:
+            user = None
 
-        project = self.session.merge(Project(id=data['project_id']))
-        if not filter(lambda x: x.id == source.id, project.sources):
-            project.sources.append(source)
+        if data['project_id']:
+            project = self.session.merge(Project(id=data['project_id']))
+            if not filter(lambda x: x.id == source.id, project.sources):
+                project.sources.append(source)
+        else:
+            project = None
 
         # Record the updated resource metadata
         rtimestamp = datetime.datetime.utcnow()
