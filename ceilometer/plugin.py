@@ -20,11 +20,17 @@
 
 import abc
 
+from ceilometer.openstack.common import cfg
+
 
 class NotificationBase(object):
     """Base class for plugins that support the notification API."""
 
     __metaclass__ = abc.ABCMeta
+
+    def __init__(self):
+        self.topics = set(topic + ".info"
+                          for topic in cfg.CONF.notification_topics)
 
     @abc.abstractmethod
     def get_event_types(self):
@@ -34,6 +40,14 @@ class NotificationBase(object):
     @abc.abstractmethod
     def process_notification(self, message):
         """Return a sequence of Counter instances for the given message."""
+
+    def notification_to_metadata(self, event):
+        """Transform a payload dict to a metadata dict."""
+        metadata = dict([(k, event['payload'].get(k))
+                         for k in self.metadata_keys])
+        metadata['event_type'] = event['event_type']
+        metadata['host'] = event['publisher_id']
+        return metadata
 
 
 class PollsterBase(object):

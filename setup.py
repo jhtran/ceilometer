@@ -21,6 +21,11 @@ import textwrap
 
 import setuptools
 
+from ceilometer.openstack.common import setup
+
+requires = setup.parse_requirements()
+depend_links = setup.parse_dependency_links()
+
 setuptools.setup(
     name='ceilometer',
     version='0',
@@ -37,14 +42,18 @@ setuptools.setup(
              'bin/ceilometer-api',
              'bin/ceilometer-collector'],
     py_modules=[],
+    install_requires=requires,
+    dependency_links=depend_links,
     entry_points=textwrap.dedent("""
-    [ceilometer.collector.compute]
+    [ceilometer.collector]
     instance = ceilometer.compute.notifications:Instance
     instance_flavor = ceilometer.compute.notifications:InstanceFlavor
     memory = ceilometer.compute.notifications:Memory
     vcpus = ceilometer.compute.notifications:VCpus
     root_disk_size = ceilometer.compute.notifications:RootDiskSize
     ephemeral_disk_size = ceilometer.compute.notifications:EphemeralDiskSize
+    volume = ceilometer.volume.notifications:Volume
+    volume_size = ceilometer.volume.notifications:VolumeSize
 
     [ceilometer.poll.compute]
     libvirt_diskio = ceilometer.compute.libvirt:DiskIOPollster
@@ -53,6 +62,8 @@ setuptools.setup(
 
     [ceilometer.poll.central]
     network_floatingip = ceilometer.network.floatingip:FloatingIPPollster
+    image = ceilometer.image.glance:ImagePollster
+    image_size = ceilometer.image.glance:ImageSizePollster
 
     [ceilometer.storage]
     log = ceilometer.storage.impl_log:LogStorage

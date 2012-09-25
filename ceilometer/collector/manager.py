@@ -16,13 +16,13 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import functools
+
 from nova import context
-from nova import flags
 from nova import manager
 
 from ceilometer import meter
 from ceilometer import publish
-from ceilometer import rpc
 from ceilometer import storage
 from ceilometer.collector import dispatcher
 from ceilometer.openstack.common import cfg
@@ -30,19 +30,18 @@ from ceilometer.openstack.common import log
 from ceilometer.openstack.common import timeutils
 from ceilometer.openstack.common.rpc import dispatcher as rpc_dispatcher
 
-# FIXME(dhellmann): There must be another way to do this.  Import
-# rabbit_notifier to register notification_topics flag
+# Import rabbit_notifier to register notification_topics flag
 import ceilometer.openstack.common.notifier.rabbit_notifier
 try:
-    import nova.openstack.common.rpc as nova_rpc
+    import ceilometer.openstack.common.rpc as rpc
 except ImportError:
     # For Essex
-    import nova.rpc as nova_rpc
+    import nova.rpc as rpc
 
 LOG = log.getLogger(__name__)
 
 
-COMPUTE_COLLECTOR_NAMESPACE = 'ceilometer.collector.compute'
+COLLECTOR_NAMESPACE = 'ceilometer.collector'
 
 
 class CollectorManager(manager.Manager):
@@ -51,23 +50,25 @@ class CollectorManager(manager.Manager):
         # Use the nova configuration flags to get
         # a connection to the RPC mechanism nova
         # is using.
-        self.connection = nova_rpc.create_connection()
+        self.connection = rpc.create_connection()
 
         storage.register_opts(cfg.CONF)
         self.storage_engine = storage.get_engine(cfg.CONF)
         self.storage_conn = self.storage_engine.get_connection(cfg.CONF)
 
-        self.compute_handler = dispatcher.NotificationDispatcher(
-            COMPUTE_COLLECTOR_NAMESPACE,
+        self.handler = dispatcher.NotificationDispatcher(
+            COLLECTOR_NAMESPACE,
             self._publish_counter,
             )
         # FIXME(dhellmann): Should be using create_worker(), except
         # that notification messages do not conform to the RPC
         # invocation protocol (they do not include a "method"
         # parameter).
-        self.connection.declare_topic_consumer(
-            topic='%s.info' % cfg.CONF.notification_topics[0],
-            callback=self.compute_handler.notify)
+        for topic in self.handler.topics:
+            self.connection.declare_topic_consumer(
+                topic=topic,
+                queue_name="ceilometer.notifications",
+                callback=functools.partial(self.handler.notify, topic))
 
         # Set ourselves up as a separate worker for the metering data,
         # since the default for manager is to use create_consumer().
