@@ -70,7 +70,7 @@ class TestLocationMetadata(unittest.TestCase):
         self.instance.instance_type = m
 
     def test_metadata(self):
-        md = instance.get_metadata_from_dbobject(self.instance)
+        md = instance.get_metadata_from_apiobject(self.instance)
         for name in self.INSTANCE_PROPERTIES.keys():
             actual = md[name]
             print 'checking', name, actual

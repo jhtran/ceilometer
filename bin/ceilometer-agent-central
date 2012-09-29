@@ -21,9 +21,9 @@ import eventlet
 eventlet.monkey_patch()
 import sys
 
+from ceilometer import service
 from ceilometer.service import prepare_service
 from ceilometer.openstack.common import cfg
-from nova import service
 
 
 if __name__ == '__main__':

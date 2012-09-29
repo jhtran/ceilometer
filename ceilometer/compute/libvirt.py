@@ -58,7 +58,7 @@ def make_counter_from_instance(instance, name, type, volume):
         resource_id=instance.uuid,
         timestamp=timeutils.isotime(),
         duration=None,
-        resource_metadata=compute_instance.get_metadata_from_dbobject(
+        resource_metadata=compute_instance.get_metadata_from_apiobject(
             instance),
         )
 

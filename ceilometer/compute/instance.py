@@ -41,7 +41,7 @@ INSTANCE_PROPERTIES = [
     ]
 
 
-def get_metadata_from_dbobject(instance):
+def get_metadata_from_apiobject(instance):
     """Return a metadata dictionary for the instance.
     """
     metadata = {

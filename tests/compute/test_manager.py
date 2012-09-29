@@ -68,8 +68,9 @@ class TestRunTasks(base.TestCase):
         # instance_get_all_by_host() so when the manager gets the list
         # of instances to poll we can control the results.
         self.instance = 'faux instance'
-        self.mox.StubOutWithMock(self.mgr.db, 'instance_get_all_by_host')
-        self.mgr.db.instance_get_all_by_host(
+        self.mox.StubOutWithMock(self.mgr.nova_client,
+                                 'instance_get_all_by_host')
+        self.mgr.nova_client.instance_get_all_by_host(
             None,
             self.mgr.host,
             ).AndReturn([self.instance])

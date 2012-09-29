@@ -16,10 +16,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import pkg_resources
-
-from nova import manager
-
+from ceilometer import manager
 from ceilometer.openstack.common import log
 from ceilometer import publish
 
@@ -29,34 +26,10 @@ LOG = log.getLogger(__name__)
 PLUGIN_NAMESPACE = 'ceilometer.poll.central'
 
 
-class AgentManager(manager.Manager):
-
-    def init_host(self):
-        self._load_plugins()
-        return
+class AgentManager(manager.AgentManager):
 
     def _load_plugins(self):
-        self.pollsters = []
-        for ep in pkg_resources.iter_entry_points(PLUGIN_NAMESPACE):
-            try:
-                plugin_class = ep.load()
-                plugin = plugin_class()
-                # FIXME(dhellmann): Currently assumes all plugins are
-                # enabled when they are discovered and
-                # importable. Need to add check against global
-                # configuration flag and check that asks the plugin if
-                # it should be enabled.
-                self.pollsters.append((ep.name, plugin))
-                LOG.info('loaded pollster %s:%s',
-                         PLUGIN_NAMESPACE, ep.name)
-            except Exception as err:
-                LOG.warning('Failed to load pollster %s:%s',
-                            ep.name, err)
-                LOG.exception(err)
-        if not self.pollsters:
-            LOG.warning('Failed to load any pollsters for %s',
-                        PLUGIN_NAMESPACE)
-        return
+        super(AgentManager, self)._load_plugins(PLUGIN_NAMESPACE, LOG)
 
     def periodic_tasks(self, context, raise_on_error=False):
         """Tasks to be run at a periodic interval."""
