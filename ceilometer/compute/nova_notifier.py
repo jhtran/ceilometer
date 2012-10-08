@@ -19,7 +19,7 @@
 from ceilometer.openstack.common import cfg
 from ceilometer.openstack.common import log as logging
 
-from nova import db
+from ceilometer.api import nova_client
 from ceilometer.compute.manager import AgentManager
 
 # This module runs inside the nova compute
@@ -60,7 +60,8 @@ def notify(context, message):
     if message['event_type'] == 'compute.instance.delete.start':
         instance_id = message['payload']['instance_id']
         LOG.debug('polling final stats for %r', instance_id)
+        nv = nova_client.Client()
         _agent_manager.poll_instance(
             context,
-            db.instance_get_by_uuid(context, instance_id))
+            nv.instance_get_by_uuid(instance_id))
     return

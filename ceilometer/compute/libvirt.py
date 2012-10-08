@@ -32,6 +32,11 @@ from ceilometer.openstack.common import timeutils
 FLAGS = flags.FLAGS
 
 
+def _instance_name(instance):
+    """Shortcut to get instance name"""
+    return getattr(instance, 'OS-EXT-SRV-ATTR:instance_name', None)
+
+
 def get_libvirt_connection():
     """Return an open connection for talking to libvirt."""
     # The direct-import implementation only works with Folsom because
@@ -52,11 +57,10 @@ def make_counter_from_instance(instance, name, type, volume):
         type=type,
         volume=volume,
         user_id=instance.user_id,
-        project_id=instance.project_id,
-        resource_id=instance.uuid,
+        project_id=instance.tenant_id,
+        resource_id=instance.id,
         timestamp=timeutils.isotime(),
-        resource_metadata=compute_instance.get_metadata_from_dbobject(
-            instance),
+        resource_metadata=compute_instance.get_metadata_from_object(instance),
         )
 
 
@@ -96,12 +100,13 @@ class DiskIOPollster(plugin.ComputePollster):
         if FLAGS.compute_driver == 'libvirt.LibvirtDriver':
             conn = get_libvirt_connection()
             # TODO(jd) This does not work see bug#998089
-            # for disk in conn.get_disks(instance.name):
+            # for disk in conn.get_disks(instance_name):
+            instance_name = _instance_name(instance)
             try:
-                disks = self._get_disks(conn, instance.name)
+                disks = self._get_disks(conn, instance_name)
             except Exception as err:
                 self.LOG.warning('Ignoring instance %s: %s',
-                                 instance.name, err)
+                                 instance_name, err)
                 self.LOG.exception(err)
             else:
                 r_bytes = 0
@@ -109,7 +114,7 @@ class DiskIOPollster(plugin.ComputePollster):
                 w_bytes = 0
                 w_requests = 0
                 for disk in disks:
-                    stats = conn.block_stats(instance.name, disk)
+                    stats = conn.block_stats(instance_name, disk)
                     self.LOG.info(self.DISKIO_USAGE_MESSAGE,
                                   instance, disk, stats[0], stats[1],
                                   stats[2], stats[3], stats[4])
@@ -145,9 +150,9 @@ class CPUPollster(plugin.ComputePollster):
 
     def get_counters(self, manager, instance):
         conn = get_libvirt_connection()
-        self.LOG.info('checking instance %s', instance.uuid)
+        self.LOG.info('checking instance %s', instance.id)
         try:
-            cpu_info = conn.get_info(instance)
+            cpu_info = conn.get_info({'name': _instance_name(instance)})
             self.LOG.info("CPUTIME USAGE: %s %d",
                           instance, cpu_info['cpu_time'])
             yield make_counter_from_instance(instance,
@@ -157,7 +162,7 @@ class CPUPollster(plugin.ComputePollster):
                                              )
         except Exception as err:
             self.LOG.error('could not get CPU time for %s: %s',
-                           instance.uuid, err)
+                           instance.id, err)
             self.LOG.exception(err)
 
 
@@ -170,7 +175,7 @@ class NetPollster(plugin.ComputePollster):
 
     def _get_vnics(self, conn, instance):
         """Get disks of an instance, only used to bypass bug#998089."""
-        domain = conn._conn.lookupByName(instance.name)
+        domain = conn._conn.lookupByName(_instance_name(instance))
         tree = etree.fromstring(domain.XMLDesc(0))
         vnics = []
         for interface in tree.findall('devices/interface'):
@@ -186,7 +191,7 @@ class NetPollster(plugin.ComputePollster):
     @staticmethod
     def make_vnic_counter(instance, name, type, volume, vnic_data):
         resource_metadata = copy.copy(vnic_data)
-        resource_metadata['instance_id'] = instance.uuid
+        resource_metadata['instance_id'] = instance.id
 
         return counter.Counter(
             source='?',
@@ -194,7 +199,7 @@ class NetPollster(plugin.ComputePollster):
             type=type,
             volume=volume,
             user_id=instance.user_id,
-            project_id=instance.project_id,
+            project_id=instance.tenant_id,
             resource_id=vnic_data['fref'],
             timestamp=timeutils.isotime(),
             resource_metadata=resource_metadata
@@ -202,20 +207,21 @@ class NetPollster(plugin.ComputePollster):
 
     def get_counters(self, manager, instance):
         conn = get_libvirt_connection()
-        self.LOG.info('checking instance %s', instance.uuid)
+        instance_name = _instance_name(instance)
+        self.LOG.info('checking instance %s', instance.id)
         try:
             vnics = self._get_vnics(conn, instance)
         except Exception as err:
             self.LOG.warning('Ignoring instance %s: %s',
-                             instance.name, err)
+                             instance_name, err)
             self.LOG.exception(err)
         else:
-            domain = conn._conn.lookupByName(instance.name)
+            domain = conn._conn.lookupByName(instance_name)
             for vnic in vnics:
                 rx_bytes, rx_packets, _, _, \
                     tx_bytes, tx_packets, _, _ = \
                     domain.interfaceStats(vnic['name'])
-                self.LOG.info(self.NET_USAGE_MESSAGE, instance.name,
+                self.LOG.info(self.NET_USAGE_MESSAGE, instance_name,
                               vnic['name'], rx_bytes, tx_bytes)
                 yield self.make_vnic_counter(instance,
                                              name='network.incoming.bytes',

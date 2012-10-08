@@ -103,6 +103,8 @@ class TestNetPollster(test_base.TestCase):
         super(TestNetPollster, self).setUp()
         self.instance = mock.MagicMock()
         self.instance.name = 'instance-00000001'
+        setattr(self.instance, 'OS-EXT-SRV-ATTR:instance_name',
+                self.instance.name)
         self.instance.id = 1
 
     def test_get_vnics(self):

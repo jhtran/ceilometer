@@ -19,7 +19,9 @@
 """
 
 import datetime
+import mox
 
+from ceilometer.api import nova_client
 from ceilometer.compute import manager
 from ceilometer import counter
 from ceilometer import publish
@@ -68,14 +70,18 @@ class TestRunTasks(base.TestCase):
         # Set up a fake instance value to be returned by
         # instance_get_all_by_host() so when the manager gets the list
         # of instances to poll we can control the results.
-        self.instance = {'name': 'faux', 'vm_state': 'active'}
-        stillborn_instance = {'name': 'stillborn', 'vm_state': 'error'}
-        self.mox.StubOutWithMock(self.mgr.db, 'instance_get_all_by_host')
-        self.mgr.db.instance_get_all_by_host(
-            None,
-            self.mgr.host,
-            ).AndReturn([self.instance, stillborn_instance])
+        self.instance = mox.Mox()
+        instance_attrs = {'name': 'faux', 'OS-EXT-STS:vm_state': 'active'}
+        for attr, value in instance_attrs.iteritems():
+            setattr(self.instance, attr, value)
 
+        stillborn_instance = mox.Mox()
+        stillborn_attrs = {'name': 'stillborn', 'OS-EXT-STS:vm_state': 'error'}
+        for attr, value in stillborn_attrs.iteritems():
+            setattr(stillborn_instance, attr, value)
+
+        self.stubs.Set(nova_client.Client, 'instance_get_all_by_host',
+                       lambda *x: [self.instance, stillborn_instance])
         self.mox.ReplayAll()
         # Invoke the periodic tasks to call the pollsters.
         self.mgr.periodic_tasks(None)

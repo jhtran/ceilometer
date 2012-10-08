@@ -20,6 +20,7 @@ import pkg_resources
 
 from nova import manager
 
+from ceilometer.api import nova_client
 from ceilometer.openstack.common import cfg
 from ceilometer.openstack.common import log
 from ceilometer import publish
@@ -77,8 +78,7 @@ class AgentManager(manager.Manager):
 
     def periodic_tasks(self, context, raise_on_error=False):
         """Tasks to be run at a periodic interval."""
-        # FIXME(dhellmann): How do we get a list of instances without
-        # talking directly to the database?
-        for instance in self.db.instance_get_all_by_host(context, self.host):
-            if instance['vm_state'] != 'error':
+        nv = nova_client.Client()
+        for instance in nv.instance_get_all_by_host(self.host):
+            if getattr(instance, 'OS-EXT-STS:vm_state', None) != 'error':
                 self.poll_instance(context, instance)

@@ -35,6 +35,7 @@ except ImportError:
 
 from ceilometer import publish
 from ceilometer import counter
+from ceilometer.api import nova_client
 from ceilometer.tests import base
 from ceilometer.tests import skip
 from ceilometer.compute import nova_notifier
@@ -63,7 +64,7 @@ class TestNovaNotifier(base.TestCase):
             self.counters.append((manager, instance))
             return [self.test_data]
 
-    def fake_db_instance_get(self, context, id_):
+    def fake_instance_get(self, id_):
         if self.instance['uuid'] == id_:
             return mock.MagicMock(name=self.instance['name'],
                                   id=self.instance['uuid'])
@@ -111,7 +112,8 @@ class TestNovaNotifier(base.TestCase):
                          "metadata": {},
                          "uuid": "144e08f4-00cb-11e2-888e-5453ed1bbb5f"}
 
-        self.stubs.Set(db, 'instance_get_by_uuid', self.fake_db_instance_get)
+        self.stubs.Set(nova_client.Client, 'instance_get_by_uuid',
+                       self.fake_instance_get)
         self.stubs.Set(db, 'instance_info_cache_delete', self.do_nothing)
         self.stubs.Set(db, 'instance_destroy', self.do_nothing)
         self.stubs.Set(db, 'instance_system_metadata_get',

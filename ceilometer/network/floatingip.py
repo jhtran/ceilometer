@@ -21,6 +21,7 @@ from nova import exception
 from ceilometer.openstack.common import log
 
 from ceilometer import counter
+from ceilometer.api import nova_client
 from ceilometer.central import plugin
 
 
@@ -29,8 +30,9 @@ class FloatingIPPollster(plugin.CentralPollster):
     LOG = log.getLogger(__name__ + '.floatingip')
 
     def get_counters(self, manager, context):
+        nv = nova_client.Client()
         try:
-            ips = manager.db.floating_ip_get_all(context)
+            ips = nv.floating_ip_get_all()
         except exception.FloatingIpNotFoundForHost:
             pass
         else:
