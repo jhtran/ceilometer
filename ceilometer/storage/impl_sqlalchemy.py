@@ -144,7 +144,9 @@ class Connection(base.Connection):
         rtimestamp = datetime.datetime.utcnow()
         rmetadata = data['resource_metadata']
 
-        resource = self.session.merge(Resource(id=data['resource_id']))
+        resource_id = str(data['resource_id'])
+        resource = self.session.merge(Resource(id=resource_id))
+
         if not filter(lambda x: x.id == source.id, resource.sources):
             resource.sources.append(source)
         resource.project = project
