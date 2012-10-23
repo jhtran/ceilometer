@@ -141,15 +141,17 @@ class Connection(base.Connection):
             project = None
 
         # Record the updated resource metadata
-        rtimestamp = datetime.datetime.utcnow()
+        rtimestamp = datetime.datetime.now()
         rmetadata = data['resource_metadata']
+
+        remove_tz = lambda x: x and x.replace(tzinfo=None) or None
 
         resource = self.session.merge(Resource(id=data['resource_id']))
         if not filter(lambda x: x.id == source.id, resource.sources):
             resource.sources.append(source)
         resource.project = project
         resource.user = user
-        resource.timestamp = data['timestamp']
+        resource.timestamp = remove_tz(data['timestamp'])
         resource.received_timestamp = rtimestamp
         # Current metadata being used and when it was last updated.
         resource.resource_metadata = rmetadata
@@ -164,7 +166,7 @@ class Connection(base.Connection):
             meter.sources.append(source)
         meter.project = project
         meter.user = user
-        meter.timestamp = data['timestamp']
+        meter.timestamp = remove_tz(data['timestamp'])
         meter.resource_metadata = rmetadata
         meter.counter_volume = data['counter_volume']
         meter.message_signature = data['message_signature']
