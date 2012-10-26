@@ -19,13 +19,12 @@
 import copy
 import datetime
 
-from ceilometer.openstack.common import log
-from ceilometer.openstack.common import cfg
+from ceilometer.openstack.common import cfg, log, timeutils
 from ceilometer.storage import base
 from ceilometer.storage.sqlalchemy.models import Meter, Project, Resource
 from ceilometer.storage.sqlalchemy.models import Source, User
-from ceilometer.storage.sqlalchemy.session import get_session
-import ceilometer.storage.sqlalchemy.session as session
+from ceilometer.storage.sqlalchemy.session import func
+import ceilometer.storage.sqlalchemy.session as sqlalchemy_session
 
 LOG = log.getLogger(__name__)
 
@@ -77,6 +76,13 @@ def make_query_from_filter(query, event_filter, require_meter=True):
                           raise an error.
     """
 
+    # sqlite doesn't compare time strings well, convert to datetime
+    def sanitize_timestamp(timestamp):
+        """Return a naive utc datetime object"""
+        if not isinstance(timestamp, datetime.datetime):
+            timestamp = timeutils.parse_isotime(timestamp)
+        return timeutils.normalize_time(timestamp)
+
     if event_filter.meter:
         query = query.filter(Meter.counter_name == event_filter.meter)
     elif require_meter:
@@ -84,9 +90,11 @@ def make_query_from_filter(query, event_filter, require_meter=True):
     if event_filter.source:
         query = query.filter_by(source=event_filter.source)
     if event_filter.start:
-        query = query = query.filter(Meter.timestamp >= event_filter.start)
+        ts_start = sanitize_timestamp(event_filter.start)
+        query = query.filter(Meter.timestamp >= ts_start)
     if event_filter.end:
-        query = query = query.filter(Meter.timestamp < event_filter.end)
+        ts_end = sanitize_timestamp(event_filter.end)
+        query = query.filter(Meter.timestamp < ts_end)
     if event_filter.user:
         query = query.filter_by(user_id=event_filter.user)
     elif event_filter.project:
@@ -109,7 +117,7 @@ class Connection(base.Connection):
     def _get_connection(self, conf):
         """Return a connection to the database.
         """
-        return session.get_session()
+        return sqlalchemy_session.get_session()
 
     def record_metering_data(self, data):
         """Write the data to the backend storage system.
@@ -248,13 +256,26 @@ class Connection(base.Connection):
             del e['id']
             yield e
 
+    def make_volume_query(self, event_filter, counter_volume_func):
+        """Returns complex Meter counter_volume query for max and sum"""
+        subq = model_query(Meter.id, session=self.session)
+        subq = make_query_from_filter(subq, event_filter, require_meter=False)
+        subq = subq.subquery()
+        mainq = self.session.query(Resource.id, counter_volume_func)
+        mainq = mainq.join(Meter).group_by(Resource.id)
+        return mainq.filter(Meter.id.in_(subq))
+
     def get_volume_sum(self, event_filter):
-        # it isn't clear these are used
-        pass
+        counter_volume_func = func.sum(Meter.counter_volume)
+        query = self.make_volume_query(event_filter, counter_volume_func)
+        results = query.all()
+        return ({'resource_id': x, 'value': y} for x, y in results)
 
     def get_volume_max(self, event_filter):
-        # it isn't clear these are used
-        pass
+        counter_volume_func = func.max(Meter.counter_volume)
+        query = self.make_volume_query(event_filter, counter_volume_func)
+        results = query.all()
+        return ({'resource_id': x, 'value': y} for x, y in results)
 
     def get_event_interval(self, event_filter):
         """Return the min and max timestamps from events,
@@ -262,7 +283,6 @@ class Connection(base.Connection):
 
         ( datetime.datetime(), datetime.datetime() )
         """
-        func = session.func()
         query = self.session.query(func.min(Meter.timestamp),
                                    func.max(Meter.timestamp))
         query = make_query_from_filter(query, event_filter)
@@ -279,7 +299,7 @@ def model_query(*args, **kwargs):
 
     :param session: if present, the session to use
     """
-    session = kwargs.get('session') or get_session()
+    session = kwargs.get('session') or sqlalchemy_session.get_session()
     query = session.query(*args)
     return query
 
