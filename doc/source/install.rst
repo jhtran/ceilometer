@@ -85,23 +85,43 @@ Installing the Collector
       yet been tested with ZeroMQ. We recommend using Rabbit or qpid
       for now.
 
-2. Install MongoDB.
+2. If you want to be able to retrieve image counters, you need to instruct
+   Glance to send notifications to the bus by changing ``notifier_strategy``
+   to ``rabbit`` or ``qpid`` in ``glance-api.conf`` and restarting the
+   service.
+
+3. In order to retrieve object store statistics, ceilometer needs an
+   access to swift with ``ResellerAdmin`` role. You should give this
+   role to your ``os_username`` user for tenant ``os_tenant_name``::
+
+   $ keystone role-create --name=ResellerAdmin
+   +----------+----------------------------------+
+   | Property |              Value               |
+   +----------+----------------------------------+
+   |    id    | 462fa46c13fd4798a95a3bfbe27b5e54 |
+   |   name   |          ResellerAdmin           |
+   +----------+----------------------------------+
+   $ keystone user-role-add --tenant_id $SERVICE_TENANT \
+                            --user_id $CEILOMETER_USER \
+                            --role_id 462fa46c13fd4798a95a3bfbe27b5e54
+
+4. Install MongoDB.
 
    Follow the instructions to install the MongoDB_ package for your
    operating system, then start the service.
 
-3. Clone the ceilometer git repository to the management server::
+5. Clone the ceilometer git repository to the management server::
 
    $ cd /opt/stack
    $ git clone https://github.com/stackforge/ceilometer.git
 
-4. As a user with ``root`` permissions or ``sudo`` privileges, run the
+6. As a user with ``root`` permissions or ``sudo`` privileges, run the
    ceilometer installer::
 
    $ cd ceilometer
    $ sudo python setup.py install
 
-5. Configure ceilometer.
+7. Configure ceilometer.
 
    Ceilometer needs to know about some of the nova configuration
    options, so the simplest way to start is copying
@@ -114,7 +134,7 @@ Installing the Collector
    Refer to :doc:`configuration` for details about any other options
    you might want to modify before starting the service.
 
-6. Start the collector.
+8. Start the collector.
 
    ::
 
