@@ -240,8 +240,6 @@ class Connection(base.Connection):
             query = query.filter(Resource.timestamp < end_timestamp)
         if project is not None:
             query = query.filter(Resource.project_id == project)
-        query = query.options(
-                    sqlalchemy_session.sqlalchemy.orm.joinedload('meters'))
 
         for resource in query.all():
             r = row2dict(resource)
@@ -252,9 +250,11 @@ class Connection(base.Connection):
             # Replace the 'resource_metadata' with 'metadata'
             r['metadata'] = r['resource_metadata']
             del r['resource_metadata']
-            # Replace the 'meters' with 'meter'
-            r['meter'] = r['meters']
-            del r['meters']
+            # instead of eager loading meters, get distinct and merge it
+            meter_query = self.session.query(
+                              Meter.counter_name, Meter.counter_type)
+            meter_query.filter(Meter.resource_id == r['resource_id'])
+            r['meter'] = meters2dict(meter_query.distinct().all())
             yield r
 
     def get_raw_events(self, event_filter):
@@ -335,3 +335,12 @@ def row2dict(row, srcflag=None):
         if d.get('meters') is not None:
             d['meters'] = map(lambda x: row2dict(x, True), d['meters'])
     return d
+
+def meters2dict(data):
+    """Convert list of tuples returned from meter query into list of dicts"""
+
+    converted = []
+    for counter_name, counter_type in data:
+      converted.append({'counter_name': counter_name,
+                       'counter_type': counter_type})
+    return converted
