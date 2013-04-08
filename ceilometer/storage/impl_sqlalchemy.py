@@ -19,11 +19,11 @@
 import copy
 import datetime
 
-from ceilometer.openstack.common import log
-from ceilometer.openstack.common import cfg
+from ceilometer.openstack.common import cfg, log, timeutils
 from ceilometer.storage import base
 from ceilometer.storage.sqlalchemy.models import Meter, Project, Resource
 from ceilometer.storage.sqlalchemy.models import Source, User
+from ceilometer.storage.sqlalchemy.session import func
 import ceilometer.storage.sqlalchemy.session as sqlalchemy_session
 
 LOG = log.getLogger(__name__)
@@ -101,9 +101,11 @@ def make_query_from_filter(query, event_filter, require_meter=True):
     if event_filter.source:
         query = query.filter_by(source=event_filter.source)
     if event_filter.start:
-        query = query = query.filter(Meter.timestamp >= event_filter.start)
+        ts_start = event_filter.start
+        query = query.filter(Meter.timestamp >= ts_start)
     if event_filter.end:
-        query = query = query.filter(Meter.timestamp < event_filter.end)
+        ts_end = event_filter.end
+        query = query.filter(Meter.timestamp < ts_end)
     if event_filter.user:
         query = query.filter_by(user_id=event_filter.user)
     elif event_filter.project:
@@ -210,8 +212,7 @@ class Connection(base.Connection):
         return (x[0] for x in query.all())
 
     def get_resources(self, user=None, project=None, source=None,
-                      start_timestamp=None, end_timestamp=None,
-                      session=None):
+                      start_timestamp=None, end_timestamp=None):
         """Return an iterable of dictionaries containing resource information.
 
         { 'resource_id': UUID of the resource,
@@ -228,7 +229,7 @@ class Connection(base.Connection):
         :param start_timestamp: Optional modified timestamp start range.
         :param end_timestamp: Optional modified timestamp end range.
         """
-        query = model_query(Resource, session=session)
+        query = model_query(Resource, session=self.session)
         if user is not None:
             query = query.filter(Resource.user_id == user)
         if source is not None:
@@ -251,9 +252,11 @@ class Connection(base.Connection):
             # Replace the 'resource_metadata' with 'metadata'
             r['metadata'] = r['resource_metadata']
             del r['resource_metadata']
-            # Replace the 'meters' with 'meter'
-            r['meter'] = r['meters']
-            del r['meters']
+            # instead of eager loading meters, get distinct and merge it
+            meter_query = self.session.query(
+                              Meter.counter_name, Meter.counter_type)
+            meter_query.filter(Meter.resource_id == r['resource_id'])
+            r['meter'] = meters2dict(meter_query.distinct().all())
             yield r
 
     def get_raw_events(self, event_filter):
@@ -273,13 +276,26 @@ class Connection(base.Connection):
             del e['id']
             yield e
 
+    def _make_volume_query(self, event_filter, counter_volume_func):
+        """Returns complex Meter counter_volume query for max and sum"""
+        subq = model_query(Meter.id, session=self.session)
+        subq = make_query_from_filter(subq, event_filter, require_meter=False)
+        subq = subq.subquery()
+        mainq = self.session.query(Resource.id, counter_volume_func)
+        mainq = mainq.join(Meter).group_by(Resource.id)
+        return mainq.filter(Meter.id.in_(subq))
+
     def get_volume_sum(self, event_filter):
-        # it isn't clear these are used
-        pass
+        counter_volume_func = func.sum(Meter.counter_volume)
+        query = self._make_volume_query(event_filter, counter_volume_func)
+        results = query.all()
+        return ({'resource_id': x, 'value': y} for x, y in results)
 
     def get_volume_max(self, event_filter):
-        # it isn't clear these are used
-        pass
+        counter_volume_func = func.max(Meter.counter_volume)
+        query = self._make_volume_query(event_filter, counter_volume_func)
+        results = query.all()
+        return ({'resource_id': x, 'value': y} for x, y in results)
 
     def get_event_interval(self, event_filter):
         """Return the min and max timestamps from events,
@@ -287,7 +303,6 @@ class Connection(base.Connection):
 
         ( datetime.datetime(), datetime.datetime() )
         """
-        func = sqlalchemy_session.sqlalchemy.func
         query = self.session.query(func.min(Meter.timestamp),
                                    func.max(Meter.timestamp))
         query = make_query_from_filter(query, event_filter)
@@ -322,3 +337,12 @@ def row2dict(row, srcflag=None):
         if d.get('meters') is not None:
             d['meters'] = map(lambda x: row2dict(x, True), d['meters'])
     return d
+
+def meters2dict(data):
+    """Convert list of tuples returned from meter query into list of dicts"""
+
+    converted = []
+    for counter_name, counter_type in data:
+      converted.append({'counter_name': counter_name,
+                       'counter_type': counter_type})
+    return converted

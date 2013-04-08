@@ -93,21 +93,16 @@ blueprint = flask.Blueprint('v1', __name__)
 
 ## APIs for working with resources.
 
-
-def _list_resources(source=None, user=None, project=None,
-                    start_timestamp=None, end_timestamp=None):
+def _list_resources(source=None, user=None, project=None):
     """Return a list of resource identifiers.
     """
-    if start_timestamp:
-        start_timestamp = timeutils.parse_isotime(start_timestamp)
-    if end_timestamp:
-        end_timestamp = timeutils.parse_isotime(end_timestamp)
+    q_ts = _get_query_timestamps(flask.request.args)
     resources = flask.request.storage_conn.get_resources(
         source=source,
         user=user,
         project=project,
-        start_timestamp=start_timestamp,
-        end_timestamp=end_timestamp,
+        start_timestamp=q_ts['start_timestamp'],
+        end_timestamp=q_ts['end_timestamp'],
         )
     return flask.jsonify(resources=list(resources))
 
@@ -124,11 +119,7 @@ def list_resources_by_project(project):
         (optional)
     :type end_timestamp: ISO date in UTC
     """
-    return _list_resources(
-        project=project,
-        start_timestamp=flask.request.args.get('start_timestamp'),
-        end_timestamp=flask.request.args.get('end_timestamp'),
-        )
+    return _list_resources(project=project)
 
 
 @blueprint.route('/resources')
@@ -241,11 +232,14 @@ def _list_events(project=None,
                 ):
     """Return a list of raw metering events.
     """
+    q_ts = _get_query_timestamps(flask.request.args)
     f = storage.EventFilter(user=user,
                             project=project,
                             source=source,
                             meter=meter,
                             resource=resource,
+                            start=q_ts['start_timestamp'],
+                            end=q_ts['end_timestamp'],
                             )
     events = flask.request.storage_conn.get_raw_events(f)
     return flask.jsonify(events=list(events))
