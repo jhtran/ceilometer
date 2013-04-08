@@ -240,8 +240,6 @@ class Connection(base.Connection):
             query = query.filter(Resource.timestamp < end_timestamp)
         if project is not None:
             query = query.filter(Resource.project_id == project)
-        query = query.options(
-                    sqlalchemy_session.sqlalchemy.orm.joinedload('meters'))
 
         for resource in query.all():
             r = row2dict(resource)
