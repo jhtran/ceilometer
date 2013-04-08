@@ -6,6 +6,7 @@ netaddr
 argparse
 sqlalchemy
 eventlet
-anyjson
+anyjson>=0.3.1
 Flask==0.9
 stevedore>=0.4
+pymongo
