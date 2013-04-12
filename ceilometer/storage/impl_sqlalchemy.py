@@ -331,7 +331,7 @@ def row2dict(row, srcflag=None):
         if col in d:
             del d[col]
     if not srcflag:
-        d['sources'] = map(lambda x: row2dict(x, True), row.sources)
+        #d['sources'] = map(lambda x: row2dict(x, True), row.sources)
         if d.get('meters') is not None:
             d['meters'] = map(lambda x: row2dict(x, True), d['meters'])
     return d
