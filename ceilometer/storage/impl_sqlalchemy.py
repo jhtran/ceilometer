@@ -229,7 +229,13 @@ class Connection(base.Connection):
         :param start_timestamp: Optional modified timestamp start range.
         :param end_timestamp: Optional modified timestamp end range.
         """
-        query = model_query(Resource, session=self.session)
+        concat_counter = func.concat(Meter.counter_name,":",Meter.counter_type)
+        distinct_counter = func.distinct(concat_counter)
+        group_concat_counter = func.group_concat(distinct_counter)
+
+        query = self.session.query(Resource, group_concat_counter)
+        query.join(Resource.meters)
+
         if user is not None:
             query = query.filter(Resource.user_id == user)
         if source is not None:
@@ -241,7 +247,7 @@ class Connection(base.Connection):
         if project is not None:
             query = query.filter(Resource.project_id == project)
 
-        for resource in query.all():
+        for resource, meters in query.group_by(Resource.id).all():
             r = row2dict(resource)
             # Replace the '_id' key with 'resource_id' to meet the
             # caller's expectations.
@@ -250,11 +256,7 @@ class Connection(base.Connection):
             # Replace the 'resource_metadata' with 'metadata'
             r['metadata'] = r['resource_metadata']
             del r['resource_metadata']
-            # instead of eager loading meters, get distinct and merge it
-            meter_query = self.session.query(
-                              Meter.counter_name, Meter.counter_type)
-            meter_query.filter(Meter.resource_id == r['resource_id'])
-            r['meter'] = meters2dict(meter_query.distinct().all())
+            r['meter'] = meters2dict(meters)
             yield r
 
     def get_raw_events(self, event_filter):
@@ -330,10 +332,10 @@ def row2dict(row, srcflag=None):
     for col in ['_sa_instance_state', 'sources']:
         if col in d:
             del d[col]
-    if not srcflag:
-        #d['sources'] = map(lambda x: row2dict(x, True), row.sources)
-        if d.get('meters') is not None:
-            d['meters'] = map(lambda x: row2dict(x, True), d['meters'])
+#    if not srcflag:
+#        d['sources'] = map(lambda x: row2dict(x, True), row.sources)
+#        if d.get('meters') is not None:
+#            d['meters'] = map(lambda x: row2dict(x, True), d['meters'])
     return d
 
 def meters2dict(data):
@@ -341,6 +343,15 @@ def meters2dict(data):
 
     converted = []
     for counter_name, counter_type in data:
+      converted.append({'counter_name': counter_name,
+                       'counter_type': counter_type})
+    return converted
+def meters2dict(data):
+    """Convert list of tuples returned from meter query into list of dicts"""
+
+    converted = []
+    for i in data.split(','):
+      counter_name, counter_type = i.split(':')
       converted.append({'counter_name': counter_name,
                        'counter_type': counter_type})
     return converted
